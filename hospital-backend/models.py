@@ -18,6 +18,8 @@ class User(Base):
     email = Column(String(100), unique=True, nullable=True)
     phone = Column(String(15), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    reset_token = Column(String(10), nullable=True)   # Lưu mã OTP
+    reset_token_exp = Column(DateTime, nullable=True) # Lưu thời gian hết hạn
 
 # Bảng Patients
 class Patient(Base):

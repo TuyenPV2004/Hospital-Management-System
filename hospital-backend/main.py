@@ -1,4 +1,5 @@
 # main.py
+from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -100,9 +101,9 @@ def create_staff(
 
 # --- CẤU HÌNH EMAIL (Thay đổi thông tin của bạn vào đây) ---
 conf = ConnectionConfig(
-    MAIL_USERNAME = "dia_chi_email_cua_ban@gmail.com",
-    MAIL_PASSWORD = "mat_khau_ung_dung_16_ky_tu", # <--- Dùng App Password, KHÔNG dùng pass đăng nhập
-    MAIL_FROM = "dia_chi_email_cua_ban@gmail.com",
+    MAIL_USERNAME = "tuvan990.cv@gmail.com",
+    MAIL_PASSWORD = "fozy nozh sghf wlci",
+    MAIL_FROM = "tuvan990.cv@gmail.com",
     MAIL_PORT = 587,
     MAIL_SERVER = "smtp.gmail.com",
     MAIL_STARTTLS = True,
