@@ -75,7 +75,7 @@ const Login = () => {
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             className="w-full px-3 py-2 border rounded focus:outline-none focus:ring focus:border-blue-300"
-                            placeholder="Nhập admin"
+                            placeholder="Nhập tên đăng nhập"
                             required
                         />
                     </div>
