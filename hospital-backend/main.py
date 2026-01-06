@@ -350,6 +350,10 @@ def get_patient_history(
     patient.visits = visits
     return patient
 
+# --- API 15: Lấy danh sách bác sĩ ---
+@app.get("/users/doctors", response_model=list[schemas.UserResponse])
+def get_doctors(db: Session = Depends(get_db)):
+    return db.query(models.User).filter(models.User.role == 'DOCTOR').all()
 
 
 # Tạo cầu nối Frontend và Backend (CORS)
