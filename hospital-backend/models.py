@@ -2,6 +2,8 @@
 from sqlalchemy import Column, Integer, String, Enum, ForeignKey, DateTime, Text, DECIMAL
 from sqlalchemy.sql import func
 from database import Base
+from sqlalchemy import Column, Integer, String, Enum, ForeignKey, DateTime, Text, DECIMAL, Float
+from sqlalchemy.orm import relationship
 
 # Bảng Users
 class User(Base):
