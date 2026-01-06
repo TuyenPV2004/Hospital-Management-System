@@ -6,7 +6,7 @@ import models, database, schemas, security
 from sqlalchemy import func, desc, extract
 
 app = FastAPI()
-
+FIXED_EXAM_FEE = 50000.0 # Phí khám cố định (VNĐ)
 # Dependency để lấy DB session
 def get_db():
     db = database.SessionLocal()
