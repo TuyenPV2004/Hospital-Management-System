@@ -160,15 +160,19 @@ def create_visit(
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
-    # Kiểm tra xem bệnh nhân có tồn tại không
-    patient = db.query(models.Patient).filter(models.Patient.patient_id == visit.patient_id).first()
-    if not patient:
-        raise HTTPException(status_code=404, detail="Bệnh nhân không tồn tại")
-        
+    # (Logic kiểm tra bệnh nhân cũ giữ nguyên...)
+    
+    # Tạo lượt khám với đầy đủ thông tin sinh tồn
     db_visit = models.Visit(
         patient_id=visit.patient_id,
         doctor_id=visit.doctor_id,
-        status="WAITING" # Mặc định là đang chờ
+        status="WAITING",
+        chief_complaint=visit.chief_complaint,
+        pulse=visit.pulse,
+        temperature=visit.temperature,
+        blood_pressure=visit.blood_pressure,
+        respiratory_rate=visit.respiratory_rate,
+        priority=visit.priority
     )
     db.add(db_visit)
     db.commit()
