@@ -33,10 +33,22 @@ class Medicine(Base):
     __tablename__ = "Medicines"
 
     medicine_id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), nullable=False)
-    unit = Column(String(20), nullable=False) # Viên, Vỉ, Hộp
-    price = Column(DECIMAL(10, 2), nullable=False)
+    name = Column(String(100), nullable=False) # Tên biệt dược
+    active_ingredient = Column(String(255))    # Hoạt chất (MỚI)
+    category = Column(String(100))             # Nhóm thuốc (MỚI)
+    unit = Column(String(20), nullable=False)
+    dosage = Column(String(50))                # Hàm lượng (MỚI)
+    
+    price = Column(DECIMAL(10, 2), nullable=False)       # Giá bán
+    import_price = Column(DECIMAL(10, 2), default=0)     # Giá nhập (MỚI)
+    
     stock_quantity = Column(Integer, default=0)
+    
+    expiry_date = Column(DateTime)             # Hạn sử dụng (MỚI)
+    batch_number = Column(String(50))          # Số lô (MỚI)
+    manufacturer = Column(String(100))         # Nhà SX (MỚI)
+    usage_instruction = Column(Text)           # Cách dùng mặc định (MỚI)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 # Bảng Visits (Lượt khám)
