@@ -4,15 +4,29 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import date, datetime
 
-# Dữ liệu trả về khi lấy thông tin User (ẩn password đi)
+
+# Schema dùng cho form Đăng ký (Bệnh nhân)
+class UserRegister(BaseModel):
+    username: str
+    password: str
+    full_name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+
+# Schema dùng cho Admin tạo nhân viên (Có chọn Role)
+class UserCreateStaff(UserRegister):
+    role: str # ADMIN, DOCTOR, NURSE
+
+# Schema hiển thị User
 class UserResponse(BaseModel):
     user_id: int
     username: str
     full_name: str
     role: str
-
+    email: Optional[str]
+    phone: Optional[str]
     class Config:
-        from_attributes = True # Cho phép đọc dữ liệu từ ORM model
+        from_attributes = True
 
 # Dữ liệu gửi lên khi Đăng nhập
 class LoginRequest(BaseModel):

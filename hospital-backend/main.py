@@ -41,6 +41,65 @@ def login(
     
     return {"access_token": access_token, "token_type": "bearer"}
 
+# --- API: Đăng ký tài khoản Bệnh nhân (Public - Ai cũng gọi được) ---
+@app.post("/register", response_model=schemas.UserResponse)
+def register_patient(user: schemas.UserRegister, db: Session = Depends(get_db)):
+    # 1. Check trùng username
+    db_user = db.query(models.User).filter(models.User.username == user.username).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Tên đăng nhập đã tồn tại")
+    
+    # 2. Mã hóa mật khẩu
+    hashed_password = security.pwd_context.hash(user.password)
+    
+    # 3. Tạo user với vai trò mặc định là PATIENT
+    new_user = models.User(
+        username=user.username,
+        password=hashed_password,
+        full_name=user.full_name,
+        email=user.email,
+        phone=user.phone,
+        role="PATIENT" # <--- Mặc định
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
+# --- API: Admin tạo nhân viên (Yêu cầu Token Admin) ---
+@app.post("/admin/users", response_model=schemas.UserResponse)
+def create_staff(
+    user: schemas.UserCreateStaff, 
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme) # Bắt buộc đăng nhập
+):
+    # (Thêm logic kiểm tra user.role phải là DOCTOR/NURSE/ADMIN nếu cần chặt chẽ)
+    
+    # Check trùng
+    if db.query(models.User).filter(models.User.username == user.username).first():
+        raise HTTPException(status_code=400, detail="Username đã tồn tại")
+
+    hashed_password = security.pwd_context.hash(user.password)
+    
+    new_staff = models.User(
+        username=user.username,
+        password=hashed_password,
+        full_name=user.full_name,
+        role=user.role, # <--- Role do Admin chọn
+        email=user.email,
+        phone=user.phone
+    )
+    db.add(new_staff)
+    db.commit()
+    db.refresh(new_staff)
+    return new_staff
+
+# --- API: Lấy danh sách nhân viên (Cho Admin xem) ---
+@app.get("/admin/users", response_model=list[schemas.UserResponse])
+def get_all_users(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
+    # Chỉ lấy Admin, Doctor, Nurse (bỏ qua Patient cho đỡ rối list nhân viên)
+    return db.query(models.User).filter(models.User.role.in_(['ADMIN', 'DOCTOR', 'NURSE'])).all()
+
 # --- API 2: Lấy thông tin người dùng hiện tại (Cần Token mới gọi được) ---
 @app.get("/users/me", response_model=schemas.UserResponse)
 def read_users_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
