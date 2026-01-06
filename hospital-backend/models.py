@@ -12,7 +12,11 @@ class User(Base):
     username = Column(String(50), unique=True, index=True)
     password = Column(String(255))
     full_name = Column(String(100))
-    role = Column(Enum('ADMIN', 'DOCTOR', 'NURSE'))
+    # Cập nhật Enum role
+    role = Column(Enum('ADMIN', 'DOCTOR', 'NURSE', 'PATIENT'))
+    # Thêm cột mới
+    email = Column(String(100), unique=True, nullable=True)
+    phone = Column(String(15), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 # Bảng Patients
