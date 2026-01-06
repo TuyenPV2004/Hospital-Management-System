@@ -77,6 +77,12 @@ class Visit(Base):
     visit_date = Column(DateTime(timezone=True), server_default=func.now())
     diagnosis = Column(Text, nullable=True)
     status = Column(Enum('WAITING', 'IN_PROGRESS', 'COMPLETED', 'PAID'), default='WAITING')
+    chief_complaint = Column(Text)
+    pulse = Column(Integer)
+    temperature = Column(DECIMAL(4, 1))
+    blood_pressure = Column(String(20))
+    respiratory_rate = Column(Integer)
+    priority = Column(Enum('NORMAL', 'HIGH', 'EMERGENCY'), default='NORMAL')
 
     # --- ĐÃ SỬA: Mở comment dòng này để fix lỗi InvalidRequestError ---
     patient = relationship("Patient", back_populates="visits")
