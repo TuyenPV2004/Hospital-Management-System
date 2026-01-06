@@ -306,44 +306,76 @@ def preview_bill(
         "final_amount": final_amount
     }
 
-# --- API 13: Thanh toán & Xuất hóa đơn ---
+# --- API 13 (Nâng cấp): Thanh toán & Lưu hóa đơn chi tiết ---
 @app.post("/invoices", response_model=schemas.InvoiceResponse)
 def create_invoice(
-    visit_id: int, # Chỉ cần gửi visit_id lên
+    inv: schemas.InvoiceCreate,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
-    # 1. Kiểm tra xem đã thanh toán chưa
-    existing_invoice = db.query(models.Invoice).filter(models.Invoice.visit_id == visit_id).first()
-    if existing_invoice:
-        raise HTTPException(status_code=400, detail="Lượt khám này đã thanh toán rồi")
-
-    # 2. Tính toán lại tổng tiền (Logic giống hàm preview)
-    prescriptions = db.query(models.Prescription).filter(models.Prescription.visit_id == visit_id).all()
-    medicine_total = 0
-    for pres in prescriptions:
-        med = db.query(models.Medicine).filter(models.Medicine.medicine_id == pres.medicine_id).first()
-        if med:
-            medicine_total += (pres.quantity * float(med.price))
+    # (Logic tính toán lặp lại để bảo mật - nên tách thành hàm riêng nếu dự án lớn)
+    prescriptions = db.query(models.Prescription).filter(models.Prescription.visit_id == inv.visit_id).all()
+    medicine_total = sum([p.quantity * float(db.query(models.Medicine).get(p.medicine_id).price) for p in prescriptions])
     
-    total_amount = medicine_total + FIXED_EXAM_FEE
+    sub_total = medicine_total + FIXED_EXAM_FEE + inv.procedure_fee
+    discount = sub_total * (inv.insurance_percent / 100)
+    final_amount = sub_total - discount
     
-    # 3. Lưu hóa đơn
+    # Lưu hóa đơn
     db_invoice = models.Invoice(
-        visit_id=visit_id,
-        total_amount=total_amount
+        visit_id=inv.visit_id,
+        medicine_total=medicine_total,
+        exam_fee=FIXED_EXAM_FEE,
+        procedure_fee=inv.procedure_fee,
+        insurance_percent=inv.insurance_percent,
+        final_amount=final_amount,
+        payment_method=inv.payment_method,
+        # Lưu ý: Cột total_amount cũ trong DB có thể dùng để lưu sub_total hoặc final tùy quy ước
+        # Ở đây ta tạm bỏ qua cột total_amount cũ hoặc gán nó bằng sub_total
     )
     db.add(db_invoice)
     
-    # 4. Cập nhật trạng thái lượt khám thành PAID
-    visit = db.query(models.Visit).filter(models.Visit.visit_id == visit_id).first()
-    if visit:
-        visit.status = "PAID"
-        
+    # Update trạng thái lượt khám
+    visit = db.query(models.Visit).filter(models.Visit.visit_id == inv.visit_id).first()
+    visit.status = "PAID"
+    
     db.commit()
     db.refresh(db_invoice)
     
-    return db_invoice
+    # Map dữ liệu để trả về đúng schema
+    return {
+        **db_invoice.__dict__, 
+        "total_amount": sub_total # Trả về tổng chưa giảm để frontend hiển thị
+    }
+
+# --- API BÁO CÁO (ADMIN) ---
+
+# 1. Doanh thu theo ngày (7 ngày gần nhất)
+@app.get("/reports/revenue", response_model=list[schemas.RevenueReport])
+def report_revenue(db: Session = Depends(get_db)):
+    # Query Group By Date(payment_time)
+    results = db.query(
+        func.date(models.Invoice.payment_time).label("date"),
+        func.sum(models.Invoice.final_amount).label("daily_revenue"),
+        func.count(models.Invoice.invoice_id).label("patient_count")
+    ).group_by(func.date(models.Invoice.payment_time))\
+     .order_by(desc("date")).limit(7).all()
+    
+    return results
+
+# 2. Top thuốc bán chạy
+@app.get("/reports/top-medicines", response_model=list[schemas.TopMedicine])
+def report_top_medicines(db: Session = Depends(get_db)):
+    results = db.query(
+        models.Medicine.name,
+        func.sum(models.Prescription.quantity).label("sold_quantity"),
+        models.Medicine.stock_quantity
+    ).join(models.Prescription, models.Medicine.medicine_id == models.Prescription.medicine_id)\
+     .group_by(models.Medicine.medicine_id)\
+     .order_by(desc("sold_quantity")).limit(5).all()
+     
+    return results
+
 
 # --- API 14: Lấy lịch sử khám của bệnh nhân ---
 @app.get("/patients/{patient_id}/history", response_model=schemas.PatientResponse)
