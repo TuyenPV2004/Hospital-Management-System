@@ -67,6 +67,10 @@ const Dashboard = () => {
             >
                 Thu Ngân (Thanh Toán)
             </button>
+
+            <button onClick={() => navigate('/pharmacy')} className="px-6 py-3 bg-teal-600 text-white font-bold rounded shadow">
+                Quản Lý Kho Dược
+            </button>
         </div>
         </div>      
     );
