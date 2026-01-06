@@ -91,6 +91,12 @@ const Login = () => {
                     >
                         Đăng Nhập
                     </button>
+                    <div className="mt-4 text-center border-t pt-4">
+                        <p className="text-gray-600 text-sm">Bạn chưa có tài khoản?</p>
+                        <Link to="/register" className="text-blue-600 font-bold hover:underline">
+                        Đăng ký khám bệnh ngay
+                        </Link>
+                    </div>
                 </form>
             </div>
         </div>
