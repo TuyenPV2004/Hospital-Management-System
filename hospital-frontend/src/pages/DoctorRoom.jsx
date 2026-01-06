@@ -1,37 +1,48 @@
+// src/pages/DoctorRoom.jsx
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 
 const DoctorRoom = () => {
-    // --- STATE QUẢN LÝ DỮ LIỆU ---
+    // --- STATE ---
     const [waitingList, setWaitingList] = useState([]);
     const [medicines, setMedicines] = useState([]);
     const [selectedVisit, setSelectedVisit] = useState(null);
-    
-    // (MỚI) State lưu chi tiết lịch sử bệnh nhân
-    const [patientHistory, setPatientHistory] = useState(null);
-
-    // --- STATE FORM NGHIỆP VỤ ---
-    const [diagnosis, setDiagnosis] = useState('');
-    const [prescriptionForm, setPrescriptionForm] = useState({
-        medicine_id: '',
-        quantity: 1,
-        note: ''
-    });
-    // Giỏ hàng thuốc tạm thời
-    const [tempPrescriptions, setTempPrescriptions] = useState([]); 
+    const [patientHistory, setPatientHistory] = useState(null); // Chi tiết bệnh nhân (Dị ứng, lịch sử)
     const [billPreview, setBillPreview] = useState(null);
 
-    // 1. Load dữ liệu ban đầu
+    // Form Chẩn đoán (Nâng cấp)
+    const [examForm, setExamForm] = useState({
+        clinical_symptoms: '',
+        diagnosis: '',
+        icd10: '',
+        advice: '',
+        follow_up_date: ''
+    });
+
+    // Form Kê đơn (Nâng cấp)
+    const [presForm, setPresForm] = useState({
+        medicine_id: '',
+        quantity: 1,
+        dosage_morning: '0',
+        dosage_noon: '0',
+        dosage_afternoon: '0',
+        dosage_evening: '0',
+        usage_instruction: 'Uống sau ăn',
+        note: ''
+    });
+
+    // --- EFFECT ---
     useEffect(() => {
         fetchWaitingList();
         fetchMedicines();
     }, []);
 
+    // --- API CALLS ---
     const fetchWaitingList = async () => {
         try {
             const res = await api.get('/visits?status=WAITING');
             setWaitingList(res.data);
-        } catch (err) { console.error("Lỗi tải hàng đợi:", err); }
+        } catch (err) { console.error(err); }
     };
 
     const fetchMedicines = async () => {
@@ -41,252 +52,280 @@ const DoctorRoom = () => {
         } catch (err) { console.error(err); }
     };
 
-    // --- (CẬP NHẬT) HÀM CHỌN BỆNH NHÂN ---
+    // Khi chọn bệnh nhân
     const handleSelectPatient = async (visit) => {
         setSelectedVisit(visit);
-        setDiagnosis(visit.diagnosis || '');
         setBillPreview(null);
-        setTempPrescriptions([]);
-        setPatientHistory(null); // Reset lịch sử cũ để hiện loading
         
-        // GỌI API MỚI: Lấy chi tiết lịch sử
+        // Reset form chẩn đoán với dữ liệu cũ (nếu có)
+        setExamForm({
+            clinical_symptoms: visit.clinical_symptoms || '',
+            diagnosis: visit.diagnosis || '',
+            icd10: visit.icd10 || '',
+            advice: visit.advice || '',
+            follow_up_date: visit.follow_up_date ? visit.follow_up_date.split('T')[0] : ''
+        });
+
+        // Lấy chi tiết lịch sử & dị ứng
         try {
-            // Lưu ý: Cần thêm API này ở Backend main.py
             const res = await api.get(`/patients/${visit.patient_id}/history`);
             setPatientHistory(res.data);
-        } catch (err) {
-            console.error("Lỗi tải lịch sử bệnh nhân", err);
-        }
+        } catch (err) { console.error(err); }
     };
 
-    // 3. Thêm thuốc vào danh sách tạm
-    const handleAddDrug = (e) => {
-        e.preventDefault();
-        const med = medicines.find(m => m.medicine_id === parseInt(prescriptionForm.medicine_id));
-        if (!med) return;
-
-        const newItem = {
-            ...prescriptionForm,
-            medicine_name: med.name,
-            price: med.price,
-            medicine_id: parseInt(prescriptionForm.medicine_id)
-        };
-        setTempPrescriptions([...tempPrescriptions, newItem]);
-    };
-
-    // 4. Xử lý Hoàn tất khám
-    const handleFinishExam = async () => {
+    // --- HANDLERS ---
+    
+    // 1. Lưu bệnh án
+    const handleSaveExam = async () => {
         if (!selectedVisit) return;
         try {
-            // Bước 1: Cập nhật chẩn đoán
-            await api.put(`/visits/${selectedVisit.visit_id}/diagnosis`, { diagnosis });
+            await api.put(`/visits/${selectedVisit.visit_id}/diagnosis`, examForm);
+            alert("✅ Đã lưu hồ sơ bệnh án!");
+        } catch (err) { alert("Lỗi lưu hồ sơ"); }
+    };
 
-            // Bước 2: Gửi từng đơn thuốc lên Server
-            for (const item of tempPrescriptions) {
-                await api.post('/prescriptions', {
-                    visit_id: selectedVisit.visit_id,
-                    medicine_id: item.medicine_id,
-                    quantity: item.quantity,
-                    note: item.note
-                });
-            }
-
-            // Bước 3: Kết thúc khám
-            await api.post(`/visits/${selectedVisit.visit_id}/finish`);
-
-            alert("Đã hoàn tất khám bệnh!");
-            
-            // Reset form
-            setSelectedVisit(null);
-            setPatientHistory(null);
-            setTempPrescriptions([]);
-            fetchWaitingList(); // Load lại danh sách chờ
+    // 2. Kê đơn thuốc
+    const handleAddPrescription = async (e) => {
+        e.preventDefault();
+        if (!selectedVisit) return;
+        try {
+            await api.post('/prescriptions', {
+                visit_id: selectedVisit.visit_id,
+                ...presForm,
+                medicine_id: parseInt(presForm.medicine_id),
+                quantity: parseInt(presForm.quantity)
+            });
+            alert("💊 Đã thêm thuốc!");
+            updateBillPreview();
+            // Reset liều lượng về mặc định
+            setPresForm({...presForm, quantity: 1, dosage_morning:'0', dosage_noon:'0', dosage_afternoon:'0', dosage_evening:'0'}); 
         } catch (err) {
-            alert("Lỗi: " + (err.response?.data?.detail || err.message));
+            alert("Lỗi: " + (err.response?.data?.detail || "Không thể kê đơn"));
         }
     };
 
-    // Tính tạm tính hóa đơn
-    const updateBillPreview = () => {
-        const totalMed = tempPrescriptions.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-        const examFee = 50000;
-        setBillPreview({
-            medicine_cost: totalMed,
-            exam_fee: examFee,
-            total: totalMed + examFee
-        });
+    const updateBillPreview = async () => {
+        try {
+            const res = await api.get(`/visits/${selectedVisit.visit_id}/bill`);
+            setBillPreview(res.data);
+        } catch (err) { console.error(err); }
+    };
+
+    const handleFinishVisit = async () => {
+        if (!window.confirm("Hoàn tất khám và chuyển thu ngân?")) return;
+        try {
+            await api.post(`/visits/${selectedVisit.visit_id}/finish`);
+            setSelectedVisit(null);
+            fetchWaitingList();
+        } catch (err) { alert("Lỗi"); }
     };
 
     return (
-        <div className="flex h-screen bg-gray-100 p-4 gap-4">
+        <div className="flex h-screen bg-gray-100 overflow-hidden">
             {/* --- CỘT 1: DANH SÁCH CHỜ --- */}
-            <div className="w-1/4 bg-white rounded shadow p-4 overflow-y-auto">
-                <h2 className="text-xl font-bold text-blue-800 mb-4 border-b pb-2">Hàng Đợi Khám</h2>
-                <div className="space-y-2">
-                    {waitingList.map(visit => (
-                        <div 
-                            key={visit.visit_id}
-                            onClick={() => handleSelectPatient(visit)}
-                            className={`p-3 border rounded cursor-pointer hover:bg-blue-50 transition 
-                                ${selectedVisit?.visit_id === visit.visit_id ? 'bg-blue-100 border-blue-500 shadow-inner' : ''}`}
-                        >
-                            <div className="font-bold text-gray-700">BN #{visit.patient_id}</div>
-                            <div className="text-sm text-gray-500">{new Date(visit.visit_date).toLocaleString()}</div>
-                            <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full mt-1 inline-block">
-                                {visit.status}
-                            </span>
-                        </div>
-                    ))}
-                    {waitingList.length === 0 && <p className="text-center text-gray-400 mt-10">Không có bệnh nhân chờ</p>}
+            <div className="w-1/4 bg-white border-r flex flex-col">
+                <div className="p-4 bg-blue-800 text-white font-bold flex justify-between items-center">
+                    <span>Hàng Đợi Khám</span>
+                    <span className="bg-blue-600 px-2 rounded text-sm">{waitingList.length}</span>
                 </div>
+                <ul className="overflow-y-auto flex-1">
+                    {waitingList.map(visit => (
+                        <li key={visit.visit_id} onClick={() => handleSelectPatient(visit)}
+                            className={`p-4 border-b cursor-pointer hover:bg-blue-50 transition-colors ${selectedVisit?.visit_id === visit.visit_id ? 'bg-blue-100 border-l-4 border-blue-600' : ''}`}
+                        >
+                            <div className="flex justify-between font-bold text-gray-800">
+                                <span>ID: {visit.patient_id}</span>
+                                {visit.priority === 'EMERGENCY' && <span className="text-red-600 animate-pulse">🆘 CẤP CỨU</span>}
+                            </div>
+                            <div className="text-sm text-gray-500 mt-1">Lý do: {visit.chief_complaint || 'Không rõ'}</div>
+                            <div className="text-xs text-gray-400 mt-1">{new Date(visit.visit_date).toLocaleTimeString()}</div>
+                        </li>
+                    ))}
+                </ul>
             </div>
 
-            {/* --- CỘT 2: KHÁM BỆNH & LỊCH SỬ (ĐÃ CẬP NHẬT GIAO DIỆN) --- */}
+            {/* --- KHU VỰC LÀM VIỆC --- */}
             {selectedVisit ? (
-                <div className="w-2/4 bg-white rounded shadow flex flex-col h-full">
-                    {/* 2.1 THÔNG TIN BỆNH NHÂN & LỊCH SỬ */}
-                    <div className="p-4 border-b bg-gray-50 overflow-y-auto h-1/2">
-                        {patientHistory ? (
-                            <>
-                                {/* CẢNH BÁO DỊ ỨNG */}
-                                {patientHistory.allergies && (
-                                    <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mb-3 text-sm animate-pulse" role="alert">
-                                        <p className="font-bold">⚠️ CẢNH BÁO DỊ ỨNG:</p>
-                                        <p>{patientHistory.allergies}</p>
-                                    </div>
-                                )}
-
-                                <div className="flex justify-between items-center mb-2">
-                                    <h2 className="text-2xl font-bold text-gray-800">{patientHistory.full_name}</h2>
-                                    <span className="text-sm bg-blue-600 text-white px-2 rounded">BHYT: {patientHistory.insurance_card}</span>
-                                </div>
-                                
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm bg-white p-3 rounded border mb-4">
-                                    <div><span className="font-bold">Tuổi:</span> {new Date().getFullYear() - new Date(patientHistory.dob).getFullYear()}</div>
-                                    <div><span className="font-bold">Giới tính:</span> {patientHistory.gender}</div>
-                                    <div><span className="font-bold">BMI:</span> {patientHistory.height && patientHistory.weight ? 
-                                        <span className="font-bold text-blue-600 ml-1">
-                                            {(patientHistory.weight / ((patientHistory.height/100)**2)).toFixed(1)}
-                                        </span> : 'N/A'}
-                                    </div>
-                                    <div><span className="font-bold">Nhóm máu:</span> {patientHistory.blood_type || 'Unknown'}</div>
-                                    <div className="col-span-2 text-red-600"><span className="font-bold text-gray-700">Bệnh nền:</span> {patientHistory.medical_history || 'Không'}</div>
-                                </div>
-
-                                {/* LỊCH SỬ KHÁM */}
-                                <div>
-                                    <h3 className="font-bold text-gray-700 border-b mb-2 text-sm">🔻 Lịch sử khám chữa bệnh</h3>
-                                    <div className="max-h-32 overflow-y-auto space-y-2 pr-1">
-                                        {patientHistory.visits?.map(v => (
-                                            <div key={v.visit_id} className="text-xs border-b pb-1">
-                                                <div className="flex justify-between">
-                                                    <span className="font-bold">{new Date(v.visit_date).toLocaleDateString()}</span>
-                                                    <span className={`px-1 rounded text-white ${v.status === 'PAID' ? 'bg-green-500' : 'bg-gray-400'}`}>{v.status}</span>
-                                                </div>
-                                                <p className="text-gray-600 truncate italic">Dx: {v.diagnosis || '...'}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </>
-                        ) : (
-                            <div className="text-center py-10 text-gray-400">Đang tải hồ sơ sức khỏe...</div>
-                        )}
-                    </div>
-
-                    {/* 2.2 KHUNG CHẨN ĐOÁN */}
-                    <div className="p-4 flex-1 flex flex-col">
-                        <h3 className="font-bold text-blue-800 mb-2">🩺 Chẩn đoán & Kết luận</h3>
-                        <textarea 
-                            className="w-full border p-3 rounded focus:ring-2 focus:ring-blue-500 flex-1 resize-none"
-                            placeholder="Nhập triệu chứng, chẩn đoán bệnh..."
-                            value={diagnosis}
-                            onChange={(e) => setDiagnosis(e.target.value)}
-                        ></textarea>
-                    </div>
-                </div>
-            ) : (
-                <div className="w-2/4 flex items-center justify-center text-gray-400 italic bg-white rounded shadow">
-                    Chọn một bệnh nhân từ danh sách chờ để bắt đầu khám.
-                </div>
-            )}
-
-            {/* --- CỘT 3: KÊ ĐƠN THUỐC (GIỮ NGUYÊN LOGIC CŨ) --- */}
-            <div className="w-1/4 bg-white rounded shadow p-4 flex flex-col">
-                <h2 className="text-xl font-bold text-green-700 mb-4 border-b pb-2">💊 Kê Đơn Thuốc</h2>
-                
-                {selectedVisit && (
-                    <>
-                        <form onSubmit={handleAddDrug} className="space-y-2 mb-4">
-                            <select 
-                                className="w-full border p-2 rounded text-sm"
-                                value={prescriptionForm.medicine_id}
-                                onChange={e => setPrescriptionForm({...prescriptionForm, medicine_id: e.target.value})}
-                                required
-                            >
-                                <option value="">-- Chọn thuốc --</option>
-                                {medicines.map(m => (
-                                    <option key={m.medicine_id} value={m.medicine_id}>
-                                        {m.name} ({m.unit}) - Tồn: {m.stock_quantity}
-                                    </option>
-                                ))}
-                            </select>
+                <div className="flex w-3/4 overflow-hidden">
+                    
+                    {/* --- CỘT 2: KHÁM BỆNH --- */}
+                    <div className="w-1/2 p-6 overflow-y-auto border-r bg-white">
+                        {/* 1. Thông tin Sàng lọc & Dị ứng */}
+                        <div className="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-100">
+                            <h2 className="text-xl font-bold text-blue-800 mb-2">
+                                {patientHistory?.full_name} ({patientHistory && (new Date().getFullYear() - new Date(patientHistory.dob).getFullYear())}T)
+                            </h2>
                             
-                            <div className="flex gap-2">
-                                <input 
-                                    type="number" min="1" placeholder="SL" 
-                                    className="w-20 border p-2 rounded text-sm"
-                                    value={prescriptionForm.quantity}
-                                    onChange={e => setPrescriptionForm({...prescriptionForm, quantity: parseInt(e.target.value)})}
-                                />
-                                <input 
-                                    type="text" placeholder="Cách dùng (Sáng/Tối...)" 
-                                    className="flex-1 border p-2 rounded text-sm"
-                                    value={prescriptionForm.note}
-                                    onChange={e => setPrescriptionForm({...prescriptionForm, note: e.target.value})}
-                                />
+                            {patientHistory?.allergies && (
+                                <div className="bg-red-100 text-red-700 p-2 rounded font-bold mb-2 border-l-4 border-red-500">
+                                    ⚠️ DỊ ỨNG: {patientHistory.allergies}
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-4 gap-2 text-sm bg-white p-3 rounded shadow-sm">
+                                <div className="text-center">
+                                    <span className="block text-gray-500 text-xs">Mạch</span>
+                                    <span className="font-bold text-lg">{selectedVisit.pulse || '-'}</span>
+                                </div>
+                                <div className="text-center">
+                                    <span className="block text-gray-500 text-xs">Nhiệt độ</span>
+                                    <span className={`font-bold text-lg ${selectedVisit.temperature > 37.5 ? 'text-red-500' : ''}`}>
+                                        {selectedVisit.temperature || '-'}°C
+                                    </span>
+                                </div>
+                                <div className="text-center">
+                                    <span className="block text-gray-500 text-xs">Huyết áp</span>
+                                    <span className="font-bold text-lg">{selectedVisit.blood_pressure || '-'}</span>
+                                </div>
+                                <div className="text-center">
+                                    <span className="block text-gray-500 text-xs">SpO2/Nhịp thở</span>
+                                    <span className="font-bold text-lg">{selectedVisit.respiratory_rate || '-'}</span>
+                                </div>
                             </div>
-                            <button type="submit" className="w-full bg-blue-100 text-blue-700 font-bold py-1 rounded hover:bg-blue-200 text-sm">
-                                + Thêm thuốc
+                            <div className="mt-2 text-sm">
+                                <strong>Lý do khám:</strong> {selectedVisit.chief_complaint}
+                            </div>
+                        </div>
+
+                        {/* 2. Form Bệnh Án */}
+                        <div className="space-y-4">
+                            <div>
+                                <label className="font-bold text-gray-700 block mb-1">Triệu chứng lâm sàng (Khám thấy):</label>
+                                <textarea className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500" rows="3"
+                                    placeholder="VD: Phổi có tiếng rale ẩm, họng đỏ..."
+                                    value={examForm.clinical_symptoms} onChange={e => setExamForm({...examForm, clinical_symptoms: e.target.value})}
+                                ></textarea>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                                <div className="col-span-2">
+                                    <label className="font-bold text-gray-700 block mb-1">Chẩn đoán (*):</label>
+                                    <input type="text" className="w-full border p-2 rounded font-bold text-blue-900"
+                                        placeholder="VD: Viêm phế quản cấp"
+                                        value={examForm.diagnosis} onChange={e => setExamForm({...examForm, diagnosis: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="font-bold text-gray-700 block mb-1">Mã ICD-10:</label>
+                                    <input type="text" className="w-full border p-2 rounded text-center uppercase"
+                                        placeholder="J20"
+                                        value={examForm.icd10} onChange={e => setExamForm({...examForm, icd10: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="font-bold text-gray-700 block mb-1">Lời dặn & Hẹn tái khám:</label>
+                                <div className="flex gap-2">
+                                    <input type="text" className="flex-1 border p-2 rounded" placeholder="Lời dặn..."
+                                        value={examForm.advice} onChange={e => setExamForm({...examForm, advice: e.target.value})} />
+                                    <input type="date" className="border p-2 rounded"
+                                        value={examForm.follow_up_date} onChange={e => setExamForm({...examForm, follow_up_date: e.target.value})} />
+                                </div>
+                            </div>
+                            
+                            <button onClick={handleSaveExam} className="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 shadow">
+                                💾 LƯU BỆNH ÁN
+                            </button>
+                        </div>
+                        
+                        <div className="mt-8 pt-4 border-t">
+                             <button onClick={handleFinishVisit} className="w-full bg-green-600 text-white py-3 rounded font-bold text-lg hover:bg-green-700 shadow-lg">
+                                ✓ KẾT THÚC KHÁM
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* --- CỘT 3: KÊ ĐƠN THUỐC --- */}
+                    <div className="w-1/2 p-6 bg-gray-50 overflow-y-auto">
+                        <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            💊 Đơn Thuốc Điện Tử
+                        </h2>
+                        
+                        <form onSubmit={handleAddPrescription} className="bg-white p-5 rounded shadow-lg border border-gray-200 mb-6">
+                            {/* Chọn thuốc */}
+                            <div className="mb-3">
+                                <label className="text-xs font-bold text-gray-500 uppercase">1. Chọn thuốc</label>
+                                <select className="w-full border p-2 rounded font-medium"
+                                    value={presForm.medicine_id} onChange={e => setPresForm({...presForm, medicine_id: e.target.value})} required
+                                >
+                                    <option value="">-- Tìm tên thuốc / hoạt chất --</option>
+                                    {medicines.map(med => (
+                                        <option key={med.medicine_id} value={med.medicine_id} disabled={med.stock_quantity <= 0}>
+                                            {med.name} ({med.active_ingredient}) - Còn: {med.stock_quantity} {med.unit}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Liều dùng chi tiết */}
+                            <div className="mb-3">
+                                <label className="text-xs font-bold text-gray-500 uppercase">2. Liều dùng (Sáng - Trưa - Chiều - Tối)</label>
+                                <div className="grid grid-cols-4 gap-2 mt-1">
+                                    <input type="text" placeholder="Sáng" className="border p-2 rounded text-center"
+                                        value={presForm.dosage_morning} onChange={e => setPresForm({...presForm, dosage_morning: e.target.value})} />
+                                    <input type="text" placeholder="Trưa" className="border p-2 rounded text-center"
+                                        value={presForm.dosage_noon} onChange={e => setPresForm({...presForm, dosage_noon: e.target.value})} />
+                                    <input type="text" placeholder="Chiều" className="border p-2 rounded text-center"
+                                        value={presForm.dosage_afternoon} onChange={e => setPresForm({...presForm, dosage_afternoon: e.target.value})} />
+                                    <input type="text" placeholder="Tối" className="border p-2 rounded text-center"
+                                        value={presForm.dosage_evening} onChange={e => setPresForm({...presForm, dosage_evening: e.target.value})} />
+                                </div>
+                            </div>
+
+                            {/* Số lượng & Cách dùng */}
+                            <div className="grid grid-cols-3 gap-3 mb-4">
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 uppercase">Tổng SL</label>
+                                    <input type="number" min="1" className="w-full border p-2 rounded font-bold text-blue-600"
+                                        value={presForm.quantity} onChange={e => setPresForm({...presForm, quantity: e.target.value})} required />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="text-xs font-bold text-gray-500 uppercase">Cách dùng</label>
+                                    <input type="text" list="usage-suggestions" className="w-full border p-2 rounded"
+                                        value={presForm.usage_instruction} onChange={e => setPresForm({...presForm, usage_instruction: e.target.value})} />
+                                    <datalist id="usage-suggestions">
+                                        <option value="Uống sau ăn" />
+                                        <option value="Uống trước ăn" />
+                                        <option value="Uống khi đau" />
+                                    </datalist>
+                                </div>
+                            </div>
+
+                            <button type="submit" className="w-full bg-orange-500 text-white py-2 rounded font-bold hover:bg-orange-600 shadow">
+                                + THÊM VÀO ĐƠN
                             </button>
                         </form>
 
-                        <div className="flex-1 overflow-y-auto mb-4 border rounded p-2 bg-gray-50">
-                            {tempPrescriptions.map((item, idx) => (
-                                <div key={idx} className="flex justify-between items-start text-sm border-b last:border-0 pb-1 mb-1">
-                                    <div>
-                                        <div className="font-bold">{item.medicine_name}</div>
-                                        <div className="text-xs text-gray-500">SL: {item.quantity} | {item.note}</div>
+                        {/* Danh sách thuốc đã kê (Hóa đơn tạm) */}
+                        <div className="bg-white p-4 rounded shadow border border-blue-200">
+                            <h3 className="font-bold text-gray-700 border-b pb-2 mb-2 flex justify-between">
+                                <span>Đơn thuốc hiện tại</span>
+                                <button onClick={updateBillPreview} className="text-xs text-blue-500 underline">Cập nhật giá</button>
+                            </h3>
+                            {billPreview ? (
+                                <div>
+                                    <div className="text-sm space-y-2 max-h-40 overflow-y-auto">
+                                        {/* Lưu ý: Đây chỉ là demo hiển thị tổng tiền. 
+                                            Để hiển thị chi tiết từng viên thuốc đã kê, 
+                                            bạn cần gọi thêm API lấy danh sách Prescription theo visit_id 
+                                        */}
+                                        <p className="italic text-gray-500 text-xs">Tổng tiền thuốc tạm tính: {billPreview.medicine_cost.toLocaleString()} đ</p>
                                     </div>
-                                    <button 
-                                        onClick={() => setTempPrescriptions(tempPrescriptions.filter((_, i) => i !== idx))}
-                                        className="text-red-500 font-bold px-2 hover:bg-red-100 rounded"
-                                    >x</button>
+                                    <div className="border-t pt-2 mt-2 text-right text-xl font-bold text-red-600">
+                                        Tổng: {billPreview.total.toLocaleString()} đ
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
-
-                        <div className="mt-auto pt-2 border-t">
-                            <div className="flex justify-between items-center mb-2">
-                                <h3 className="font-bold text-gray-700 text-sm">Tạm tính</h3>
-                                <button onClick={updateBillPreview} className="text-xs text-blue-500 underline">Cập nhật</button>
-                            </div>
-                            {billPreview && (
-                                <div className="text-right text-sm mb-3">
-                                    <div className="text-red-600 font-bold text-lg">{billPreview.total.toLocaleString()} đ</div>
-                                </div>
+                            ) : (
+                                <p className="text-gray-400 text-sm italic text-center py-4">Chưa có thuốc...</p>
                             )}
-                            
-                            <button 
-                                onClick={handleFinishExam}
-                                className="w-full bg-green-600 text-white py-3 rounded font-bold shadow hover:bg-green-700"
-                            >
-                                ✅ HOÀN TẤT KHÁM
-                            </button>
                         </div>
-                    </>
-                )}
-            </div>
+                    </div>
+                </div>
+            ) : (
+                <div className="w-3/4 flex flex-col items-center justify-center text-gray-400 bg-gray-50">
+                    <div className="text-6xl mb-4">🩺</div>
+                    <p className="text-xl">Chọn bệnh nhân từ hàng đợi để bắt đầu khám</p>
+                </div>
+            )}
         </div>
     );
 };
