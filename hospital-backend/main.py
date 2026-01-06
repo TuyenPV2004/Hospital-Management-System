@@ -4,6 +4,10 @@ from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import models, database, schemas, security
 from sqlalchemy import func, desc, extract
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
+from pydantic import EmailStr
+import random
+import string
 
 app = FastAPI()
 FIXED_EXAM_FEE = 50000.0 # Phí khám cố định (VNĐ)
@@ -93,6 +97,86 @@ def create_staff(
     db.commit()
     db.refresh(new_staff)
     return new_staff
+
+# --- CẤU HÌNH EMAIL (Thay đổi thông tin của bạn vào đây) ---
+conf = ConnectionConfig(
+    MAIL_USERNAME = "dia_chi_email_cua_ban@gmail.com",
+    MAIL_PASSWORD = "mat_khau_ung_dung_16_ky_tu", # <--- Dùng App Password, KHÔNG dùng pass đăng nhập
+    MAIL_FROM = "dia_chi_email_cua_ban@gmail.com",
+    MAIL_PORT = 587,
+    MAIL_SERVER = "smtp.gmail.com",
+    MAIL_STARTTLS = True,
+    MAIL_SSL_TLS = False,
+    USE_CREDENTIALS = True,
+    VALIDATE_CERTS = True
+)
+# Hàm sinh mã OTP 6 số ngẫu nhiên
+def generate_otp():
+    return ''.join(random.choices(string.digits, k=6))
+
+# --- API: Yêu cầu quên mật khẩu (Gửi Email OTP) ---
+@app.post("/forgot-password")
+async def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
+    # 1. Kiểm tra email có tồn tại không
+    user = db.query(models.User).filter(models.User.email == request.email).first()
+    if not user:
+        # Bảo mật: Không nên báo rõ là "Email không tồn tại" để tránh bị dò quét, 
+        # nhưng để test thì ta cứ báo lỗi 404.
+        raise HTTPException(status_code=404, detail="Email không tồn tại trong hệ thống")
+
+    # 2. Sinh OTP và lưu vào DB
+    otp = generate_otp()
+    user.reset_token = otp
+    # Token hết hạn sau 15 phút
+    user.reset_token_exp = datetime.now() + timedelta(minutes=15)
+    db.commit()
+
+    # 3. Gửi Email thật
+    html = f"""
+    <h3>Yêu cầu đặt lại mật khẩu</h3>
+    <p>Xin chào {user.full_name},</p>
+    <p>Mã xác thực (OTP) của bạn là: <strong style="font-size: 24px; color: blue;">{otp}</strong></p>
+    <p>Mã này sẽ hết hạn sau 15 phút.</p>
+    <p>Nếu bạn không yêu cầu, vui lòng bỏ qua email này.</p>
+    """
+
+    message = MessageSchema(
+        subject="[Hospital App] Mã xác thực khôi phục mật khẩu",
+        recipients=[request.email],
+        body=html,
+        subtype=MessageType.html
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(message)
+
+    return {"message": "Đã gửi mã OTP qua email"}
+
+# --- API: Xác nhận OTP và Đặt mật khẩu mới ---
+@app.post("/reset-password")
+def reset_password(request: schemas.ResetPasswordRequest, db: Session = Depends(get_db)):
+    # 1. Tìm user
+    user = db.query(models.User).filter(models.User.email == request.email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User không tồn tại")
+
+    # 2. Kiểm tra OTP
+    if user.reset_token != request.otp:
+        raise HTTPException(status_code=400, detail="Mã OTP không đúng")
+    
+    # 3. Kiểm tra thời gian hết hạn
+    if user.reset_token_exp < datetime.now():
+        raise HTTPException(status_code=400, detail="Mã OTP đã hết hạn")
+
+    # 4. Đổi mật khẩu
+    user.password = security.pwd_context.hash(request.new_password)
+    
+    # 5. Xóa OTP sau khi dùng xong
+    user.reset_token = None
+    user.reset_token_exp = None
+    db.commit()
+
+    return {"message": "Đặt lại mật khẩu thành công"}
 
 # --- API: Lấy danh sách nhân viên (Cho Admin xem) ---
 @app.get("/admin/users", response_model=list[schemas.UserResponse])

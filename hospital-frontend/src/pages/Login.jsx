@@ -91,6 +91,11 @@ const Login = () => {
                     >
                         Đăng Nhập
                     </button>
+                    <div className="flex justify-end mb-4">
+                        <Link to="/forgot-password" className="text-sm text-blue-500 hover:underline">
+                            Quên mật khẩu?
+                            </Link>
+                    </div>
                     <div className="mt-4 text-center border-t pt-4">
                         <p className="text-gray-600 text-sm">Bạn chưa có tài khoản?</p>
                         <Link to="/register" className="text-blue-600 font-bold hover:underline">

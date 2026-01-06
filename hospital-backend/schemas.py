@@ -37,6 +37,15 @@ class LoginRequest(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+    
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+# Bước 2: Đổi mật khẩu mới
+class ResetPasswordRequest(BaseModel):
+    email: str
+    otp: str
+    new_password: str
 
 # --- SCHEMAS CHO BỆNH NHÂN (PATIENT) ---
 class PatientBase(BaseModel):
