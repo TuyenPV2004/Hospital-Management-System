@@ -126,13 +126,24 @@ class VisitResponse(BaseModel):
 # Dữ liệu cập nhật chẩn đoán
 class VisitUpdate(BaseModel):
     diagnosis: str
+    # --- MỚI ---
+    clinical_symptoms: Optional[str] = None
+    icd10: Optional[str] = None
+    advice: Optional[str] = None
+    follow_up_date: Optional[date] = None
 
 # Dữ liệu kê đơn thuốc
 class PrescriptionCreate(BaseModel):
     visit_id: int
     medicine_id: int
     quantity: int
-    note: Optional[str] = "Sáng 1, Tối 1" # Gợi ý mặc định
+    # --- MỚI (Chi tiết liều) ---
+    dosage_morning: str = "0"
+    dosage_noon: str = "0"
+    dosage_afternoon: str = "0"
+    dosage_evening: str = "0"
+    usage_instruction: str = "Uống sau ăn"
+    note: Optional[str] = None
 
 # Dữ liệu hiển thị đơn thuốc đã kê
 class PrescriptionResponse(BaseModel):
@@ -140,6 +151,11 @@ class PrescriptionResponse(BaseModel):
     medicine_id: int
     quantity: int
     note: Optional[str]
+    dosage_morning: Optional[str]
+    dosage_noon: Optional[str]
+    dosage_afternoon: Optional[str]
+    dosage_evening: Optional[str]
+    usage_instruction: Optional[str]
     
     class Config:
         from_attributes = True

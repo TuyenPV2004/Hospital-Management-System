@@ -196,21 +196,24 @@ def get_visits(
 @app.put("/visits/{visit_id}/diagnosis")
 def update_diagnosis(
     visit_id: int, 
-    visit_update: schemas.VisitUpdate, # Nhận chuỗi diagnosis
+    visit_update: schemas.VisitUpdate, 
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
-    # Tìm lượt khám
     visit = db.query(models.Visit).filter(models.Visit.visit_id == visit_id).first()
     if not visit:
         raise HTTPException(status_code=404, detail="Lượt khám không tồn tại")
     
-    # Cập nhật chẩn đoán và chuyển trạng thái sang "Đang khám"
+    # Cập nhật các trường mới
     visit.diagnosis = visit_update.diagnosis
-    visit.status = "IN_PROGRESS"
+    visit.clinical_symptoms = visit_update.clinical_symptoms
+    visit.icd10 = visit_update.icd10
+    visit.advice = visit_update.advice
+    visit.follow_up_date = visit_update.follow_up_date
     
+    visit.status = "IN_PROGRESS"
     db.commit()
-    return {"message": "Đã cập nhật chẩn đoán"}
+    return {"message": "Đã lưu hồ sơ bệnh án"}
 
 # --- API 10: Kê đơn thuốc (Logic khó nhất: Trừ kho) ---
 @app.post("/prescriptions", response_model=schemas.PrescriptionResponse)
@@ -219,29 +222,31 @@ def create_prescription(
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
-    # 1. Tìm thuốc trong kho
+    # (Logic kiểm tra tồn kho giữ nguyên...)
     medicine = db.query(models.Medicine).filter(models.Medicine.medicine_id == pres.medicine_id).first()
     if not medicine:
         raise HTTPException(status_code=404, detail="Thuốc không tồn tại")
-    
-    # 2. Kiểm tra tồn kho (Quan trọng!)
     if medicine.stock_quantity < pres.quantity:
-        raise HTTPException(status_code=400, detail=f"Không đủ thuốc. Kho chỉ còn {medicine.stock_quantity}")
+        raise HTTPException(status_code=400, detail=f"Không đủ thuốc. Kho còn {medicine.stock_quantity}")
 
-    # 3. Trừ tồn kho
     medicine.stock_quantity -= pres.quantity
     
-    # 4. Lưu thông tin kê đơn
+    # Lưu đầy đủ thông tin liều dùng
     db_pres = models.Prescription(
         visit_id=pres.visit_id,
         medicine_id=pres.medicine_id,
         quantity=pres.quantity,
-        note=pres.note
+        note=pres.note,
+        # MỚI
+        dosage_morning=pres.dosage_morning,
+        dosage_noon=pres.dosage_noon,
+        dosage_afternoon=pres.dosage_afternoon,
+        dosage_evening=pres.dosage_evening,
+        usage_instruction=pres.usage_instruction
     )
     db.add(db_pres)
     db.commit()
     db.refresh(db_pres)
-    
     return db_pres
 
 # --- API 11: Kết thúc khám (Chuyển sang chờ thanh toán) ---

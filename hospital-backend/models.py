@@ -83,6 +83,10 @@ class Visit(Base):
     blood_pressure = Column(String(20))
     respiratory_rate = Column(Integer)
     priority = Column(Enum('NORMAL', 'HIGH', 'EMERGENCY'), default='NORMAL')
+    clinical_symptoms = Column(Text)
+    icd10 = Column(String(50))
+    advice = Column(Text)
+    follow_up_date = Column(DateTime)
 
     # --- ĐÃ SỬA: Mở comment dòng này để fix lỗi InvalidRequestError ---
     patient = relationship("Patient", back_populates="visits")
@@ -96,6 +100,11 @@ class Prescription(Base):
     medicine_id = Column(Integer, ForeignKey("Medicines.medicine_id"), nullable=False)
     quantity = Column(Integer, nullable=False)
     note = Column(String(255), nullable=True)
+    dosage_morning = Column(String(10))
+    dosage_noon = Column(String(10))
+    dosage_afternoon = Column(String(10))
+    dosage_evening = Column(String(10))
+    usage_instruction = Column(String(255))
 
 # Bảng Invoices (Hóa đơn)
 class Invoice(Base):
