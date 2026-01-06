@@ -36,6 +36,20 @@ const Dashboard = () => {
                     <p>Xin chào, <strong>{user.full_name}</strong>!</p>
                     <p>Vai trò: <span className="px-2 py-1 text-sm text-white bg-blue-500 rounded">{user.role}</span></p>
                     
+                    {/* --- BỔ SUNG NÚT ADMIN TẠI ĐÂY --- */}
+                    {user.role === 'ADMIN' && (
+                        <div className="mt-4 p-4 bg-yellow-100 border-l-4 border-yellow-500 rounded">
+                            <h3 className="font-bold text-yellow-700">Khu vực Quản Trị Viên</h3>
+                            <button 
+                                onClick={() => navigate('/admin/users')}
+                                className="mt-2 px-4 py-2 bg-yellow-600 text-white font-bold rounded hover:bg-yellow-700"
+                            >
+                                🛠 Quản Lý Nhân Sự (Admin)
+                            </button>
+                        </div>
+                    )}
+                    {/* ---------------------------------- */}
+
                     <button 
                         onClick={handleLogout}
                         className="mt-6 px-4 py-2 text-white bg-red-500 rounded hover:bg-red-600"
