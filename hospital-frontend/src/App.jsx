@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Reception from './pages/Reception'; // <--- Import thêm
 import DoctorRoom from './pages/DoctorRoom';
 import Payment from './pages/Payment'
+import Pharmacy from './pages/Pharmacy';
 
 function App() {
   return (
