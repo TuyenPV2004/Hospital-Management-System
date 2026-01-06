@@ -15,18 +15,35 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 # Bảng Patients
+# models.py (Cập nhật class Patient)
+
 class Patient(Base):
     __tablename__ = "Patients"
 
     patient_id = Column(Integer, primary_key=True, index=True)
-    full_name = Column(String(100))
-    dob = Column(DateTime)
+    full_name = Column(String(100), nullable=False)
+    dob = Column(DateTime) # Lưu ý: Kiểm tra lại kiểu dữ liệu Date hay DateTime trong DB của bạn
     gender = Column(Enum('Nam', 'Nu', 'Khac'))
     phone = Column(String(15))
-    address = Column(Text)
     insurance_card = Column(String(20), unique=True)
+    
+    # --- CÁC TRƯỜNG MỚI ---
+    cccd = Column(String(20), unique=True)
+    email = Column(String(100))
+    address = Column(Text) # Địa chỉ cũ
+    address_detail = Column(String(255)) # Địa chỉ chi tiết mới
+    emergency_contact = Column(String(255))
+    
+    blood_type = Column(String(5))
+    height = Column(Float)
+    weight = Column(Float)
+    allergies = Column(Text)       # Dị ứng
+    medical_history = Column(Text) # Bệnh nền
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
+    # Quan hệ ngược để lấy lịch sử khám (Thêm dòng này để dễ truy vấn history)
+    visits = relationship("Visit", back_populates="patient")
 
 # Bảng Medicines (Kho thuốc)
 class Medicine(Base):

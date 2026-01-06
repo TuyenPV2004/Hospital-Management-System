@@ -24,25 +24,41 @@ class Token(BaseModel):
     access_token: str
     token_type: str
 
-# --- schemas.py (Thêm vào cuối file) ---
-
-# Class cơ bản chứa các trường chung
+# --- SCHEMAS CHO BỆNH NHÂN (PATIENT) ---
 class PatientBase(BaseModel):
     full_name: str
-    dob: date            # Ngày sinh (YYYY-MM-DD)
-    gender: str          # Nam/Nu/Khac
+    dob: date
+    gender: str
     phone: Optional[str] = None
-    address: Optional[str] = None
     insurance_card: Optional[str] = None
+    # --- MỚI ---
+    cccd: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+    emergency_contact: Optional[str] = None
+    blood_type: Optional[str] = None
+    height: Optional[float] = None
+    weight: Optional[float] = None
+    allergies: Optional[str] = None       # Quan trọng
+    medical_history: Optional[str] = None
 
-# Dùng khi tạo mới (Y tá gửi lên)
 class PatientCreate(PatientBase):
     pass
 
-# Dùng khi trả về (Server gửi về cho Frontend)
+# Schema hiển thị lịch sử khám (Dùng cho Bác sĩ xem)
+class VisitHistoryItem(BaseModel):
+    visit_id: int
+    visit_date: datetime
+    diagnosis: Optional[str]
+    status: str
+    class Config:
+        from_attributes = True
+
 class PatientResponse(PatientBase):
     patient_id: int
     created_at: datetime
+    # Thêm danh sách lịch sử khám (Optional vì ở màn hình danh sách không cần load hết)
+    visits: Optional[list[VisitHistoryItem]] = [] 
 
     class Config:
         from_attributes = True

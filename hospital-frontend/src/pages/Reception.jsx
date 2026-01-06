@@ -14,7 +14,16 @@ const Reception = () => {
         gender: 'Nam',
         phone: '',
         address: '',
-        insurance_card: ''
+        insurance_card: '',
+        // --- CÁC TRƯỜNG MỚI BỔ SUNG ---
+        cccd: '', 
+        email: '', 
+        emergency_contact: '', 
+        blood_type: '', 
+        height: '', 
+        weight: '', 
+        allergies: '', 
+        medical_history: ''
     });
 
     // 1. Load danh sách bệnh nhân khi vào trang
@@ -77,49 +86,50 @@ const Reception = () => {
                 {/* --- CỘT TRÁI: FORM THÊM BỆNH NHÂN --- */}
                 <div className="md:col-span-1 bg-white p-4 rounded shadow">
                     <h2 className="text-xl font-bold mb-4 text-gray-700">Thêm Bệnh Nhân Mới</h2>
-                    <form onSubmit={handleAddPatient} className="space-y-3">
-                        <input 
-                            type="text" placeholder="Họ và tên" required
-                            className="w-full border p-2 rounded"
-                            value={newPatient.full_name}
-                            onChange={e => setNewPatient({...newPatient, full_name: e.target.value})}
-                        />
-                        <div className="flex gap-2">
-                            <input 
-                                type="date" required
-                                className="w-full border p-2 rounded"
-                                value={newPatient.dob}
-                                onChange={e => setNewPatient({...newPatient, dob: e.target.value})}
-                            />
-                            <select 
-                                className="border p-2 rounded"
-                                value={newPatient.gender}
-                                onChange={e => setNewPatient({...newPatient, gender: e.target.value})}
-                            >
+                    <form onSubmit={handleAddPatient} className="space-y-3 h-full overflow-y-auto pr-2">
+                        <h3 className="font-bold text-blue-600 border-b">1. Hành chính</h3>
+                        <input type="text" placeholder="Họ và tên (*)" required className="w-full border p-2 rounded"
+                            value={newPatient.full_name} onChange={e => setNewPatient({...newPatient, full_name: e.target.value})} />
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                            <input type="date" className="border p-2 rounded"
+                                value={newPatient.dob} onChange={e => setNewPatient({...newPatient, dob: e.target.value})} />
+                            <select className="border p-2 rounded" value={newPatient.gender} onChange={e => setNewPatient({...newPatient, gender: e.target.value})}>
                                 <option value="Nam">Nam</option>
                                 <option value="Nu">Nữ</option>
                             </select>
                         </div>
-                        <input 
-                            type="text" placeholder="Số BHYT (nếu có)"
-                            className="w-full border p-2 rounded"
-                            value={newPatient.insurance_card}
-                            onChange={e => setNewPatient({...newPatient, insurance_card: e.target.value})}
-                        />
-                        <input 
-                            type="text" placeholder="Số điện thoại"
-                            className="w-full border p-2 rounded"
-                            value={newPatient.phone}
-                            onChange={e => setNewPatient({...newPatient, phone: e.target.value})}
-                        />
-                         <textarea 
-                            placeholder="Địa chỉ"
-                            className="w-full border p-2 rounded"
-                            value={newPatient.address}
-                            onChange={e => setNewPatient({...newPatient, address: e.target.value})}
-                        ></textarea>
-                        <button type="submit" className="w-full bg-green-600 text-white py-2 rounded font-bold hover:bg-green-700">
-                            + Lưu Hồ Sơ
+                         {/* Lưu ý: Bạn nên giữ lại trường SĐT và Địa chỉ nếu cần thiết, 
+                             hoặc code của bạn đã thay thế chúng bằng các trường khác */}
+                        <div className="grid grid-cols-2 gap-2">
+                            <input type="text" placeholder="Số CCCD" className="border p-2 rounded"
+                                value={newPatient.cccd} onChange={e => setNewPatient({...newPatient, cccd: e.target.value})} />
+                            <input type="text" placeholder="Số BHYT" className="border p-2 rounded"
+                                value={newPatient.insurance_card} onChange={e => setNewPatient({...newPatient, insurance_card: e.target.value})} />
+                        </div>
+                        <input type="text" placeholder="Người thân (Tên - SĐT)" className="w-full border p-2 rounded"
+                            value={newPatient.emergency_contact} onChange={e => setNewPatient({...newPatient, emergency_contact: e.target.value})} />
+
+                        <h3 className="font-bold text-red-600 border-b mt-4">2. Y tế & Thể trạng</h3>
+                        <div className="grid grid-cols-3 gap-2">
+                            <input type="number" placeholder="Cao (cm)" className="border p-2 rounded"
+                                value={newPatient.height} onChange={e => setNewPatient({...newPatient, height: e.target.value})} />
+                            <input type="number" placeholder="Nặng (kg)" className="border p-2 rounded"
+                                value={newPatient.weight} onChange={e => setNewPatient({...newPatient, weight: e.target.value})} />
+                            <select className="border p-2 rounded" value={newPatient.blood_type} onChange={e => setNewPatient({...newPatient, blood_type: e.target.value})}>
+                                <option value="">Máu?</option>
+                                <option value="A">A</option><option value="B">B</option><option value="AB">AB</option><option value="O">O</option>
+                            </select>
+                        </div>
+                        
+                        <textarea placeholder="⚠️ TIỀN SỬ DỊ ỨNG (Quan trọng)" className="w-full border p-2 rounded border-red-300 bg-red-50 text-red-700 font-bold placeholder-red-300"
+                            value={newPatient.allergies} onChange={e => setNewPatient({...newPatient, allergies: e.target.value})}></textarea>
+                        
+                        <textarea placeholder="Bệnh nền (Tiểu đường, HA...)" className="w-full border p-2 rounded"
+                            value={newPatient.medical_history} onChange={e => setNewPatient({...newPatient, medical_history: e.target.value})}></textarea>
+
+                        <button type="submit" className="w-full bg-green-600 text-white py-2 rounded font-bold hover:bg-green-700 mt-2">
+                            + Lưu Hồ Sơ Chi Tiết
                         </button>
                     </form>
                 </div>

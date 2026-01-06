@@ -325,12 +325,30 @@ def create_invoice(
     
     return db_invoice
 
+# --- API 14: Lấy lịch sử khám của bệnh nhân ---
+@app.get("/patients/{patient_id}/history", response_model=schemas.PatientResponse)
+def get_patient_history(
+    patient_id: int, 
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    # Query bệnh nhân và join với bảng Visits
+    patient = db.query(models.Patient).filter(models.Patient.patient_id == patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Bệnh nhân không tồn tại")
+    
+    # Lấy danh sách khám cũ (Sắp xếp mới nhất lên đầu)
+    visits = db.query(models.Visit).filter(
+        models.Visit.patient_id == patient_id
+    ).order_by(models.Visit.visit_date.desc()).all()
+    
+    # Gán vào object trả về (Pydantic sẽ lo việc format JSON)
+    patient.visits = visits
+    return patient
 
 
 
-
-# Frontend và các API khác sẽ được phát triển sau này
-# main.py
+# Tạo cầu nối Frontend và Backend (CORS)
 from fastapi.middleware.cors import CORSMiddleware
 # --- CẤU HÌNH CORS (Thêm đoạn này) ---
 origins = [
