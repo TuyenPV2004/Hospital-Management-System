@@ -1,18 +1,19 @@
 // src/services/api.js
 import axios from 'axios';
 
-// Tạo instance của axios với cấu hình mặc định
 const api = axios.create({
-    baseURL: 'http://localhost:8000', // Địa chỉ Backend FastAPI
+    baseURL: 'http://localhost:8000',
     headers: {
         'Content-Type': 'application/json',
     },
 });
 
-// Interceptor: Tự động gắn Token vào mỗi request nếu có
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('token');
+        // --- NÂNG CẤP: Kiểm tra cả 2 nơi lưu trữ ---
+        // Ưu tiên localStorage (Ghi nhớ), nếu không có thì tìm sessionStorage (Phiên tạm)
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
