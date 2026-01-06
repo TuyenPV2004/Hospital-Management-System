@@ -14,7 +14,8 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/reception" element={<Reception />} /> 
         <Route path="/doctor" element={<DoctorRoom />} />
-        <Route path="/payment" element={<Payment />} /> 
+        <Route path="/payment" element={<Payment />} />
+        <Route path="/pharmacy" element={<Pharmacy />} />
       </Routes>
     </Router>
   );
