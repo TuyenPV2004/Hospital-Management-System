@@ -41,10 +41,22 @@ const DoctorRoom = () => {
     };
 
     // 2. Chọn bệnh nhân để khám
-    const handleSelectPatient = (visit) => {
+    // State mới để lưu chi tiết bệnh nhân (bao gồm lịch sử)
+    const [patientHistory, setPatientHistory] = useState(null);
+
+// Cập nhật hàm chọn bệnh nhân
+    const handleSelectPatient = async (visit) => {
         setSelectedVisit(visit);
-        setDiagnosis(visit.diagnosis || ''); // Load chẩn đoán cũ nếu có
-        setBillPreview(null); // Reset hóa đơn tạm
+        setDiagnosis(visit.diagnosis || '');
+        setBillPreview(null);
+    
+    // GỌI API MỚI: Lấy chi tiết lịch sử
+    try {
+        const res = await api.get(`/patients/${visit.patient_id}/history`);
+        setPatientHistory(res.data);
+    } catch (err) {
+        console.error("Lỗi tải lịch sử bệnh nhân");
+    }
     };
 
     // 3. Lưu chẩn đoán (Cập nhật bệnh án)
