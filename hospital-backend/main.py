@@ -267,33 +267,43 @@ def finish_visit(
     return {"message": "Đã kết thúc khám, chuyển sang thanh toán"}
 
 
-# --- API 12: Thanh toán & Tạo hóa đơn ---
-FIXED_EXAM_FEE = 50000  # Giả sử tiền khám cố định là 50.000 VNĐ
-@app.get("/visits/{visit_id}/bill", response_model=schemas.BillDetails)
+# --- API 12 (Nâng cấp): Xem trước hóa đơn (Có tính BHYT) ---
+@app.get("/visits/{visit_id}/bill")
 def preview_bill(
-    visit_id: int, 
+    visit_id: int,
+    insurance_percent: int = 0, # Nhận tham số BHYT từ URL
+    procedure_fee: float = 0,   # Nhận phí thủ thuật
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
-    # 1. Lấy tất cả đơn thuốc của lượt khám này
+    # 1. Tính tiền thuốc
     prescriptions = db.query(models.Prescription).filter(models.Prescription.visit_id == visit_id).all()
-    
     medicine_total = 0
-    # 2. Tính tiền từng loại thuốc
+    details = []
+    
     for pres in prescriptions:
-        # Lấy giá thuốc từ bảng Medicine
         med = db.query(models.Medicine).filter(models.Medicine.medicine_id == pres.medicine_id).first()
         if med:
-            medicine_total += (pres.quantity * float(med.price))
+            cost = pres.quantity * float(med.price)
+            medicine_total += cost
+            details.append({
+                "name": med.name, "qty": pres.quantity, "price": med.price, "total": cost
+            })
             
-    # 3. Tổng cộng
-    final_total = medicine_total + FIXED_EXAM_FEE
+    # 2. Tính toán tổng
+    sub_total = medicine_total + FIXED_EXAM_FEE + procedure_fee
+    discount = sub_total * (insurance_percent / 100)
+    final_amount = sub_total - discount
     
     return {
-        "visit_id": visit_id,
-        "medicine_cost": medicine_total,
+        "medicine_details": details,
+        "medicine_total": medicine_total,
         "exam_fee": FIXED_EXAM_FEE,
-        "total": final_total
+        "procedure_fee": procedure_fee,
+        "sub_total": sub_total,
+        "insurance_percent": insurance_percent,
+        "discount": discount,
+        "final_amount": final_amount
     }
 
 # --- API 13: Thanh toán & Xuất hóa đơn ---
