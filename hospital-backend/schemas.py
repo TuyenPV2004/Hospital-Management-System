@@ -89,10 +89,21 @@ class MedicineResponse(MedicineBase):
         from_attributes = True
 
 # --- SCHEMAS CHO LƯỢT KHÁM (VISIT) ---
+# schemas.py
+
+# Dữ liệu Y tá gửi lên khi tạo lượt khám
 class VisitCreate(BaseModel):
     patient_id: int
-    doctor_id: Optional[int] = None # Có thể chọn bác sĩ hoặc để trống
+    doctor_id: Optional[int] = None
+    # --- MỚI ---
+    chief_complaint: str # Bắt buộc phải có lý do khám
+    pulse: Optional[int] = None
+    temperature: Optional[float] = None
+    blood_pressure: Optional[str] = None
+    respiratory_rate: Optional[int] = None
+    priority: str = 'NORMAL' # Mặc định là Thường
 
+# Dữ liệu trả về cho Bác sĩ xem
 class VisitResponse(BaseModel):
     visit_id: int
     patient_id: int
@@ -100,6 +111,13 @@ class VisitResponse(BaseModel):
     visit_date: datetime
     status: str
     diagnosis: Optional[str]
+    # --- MỚI ---
+    chief_complaint: Optional[str]
+    pulse: Optional[int]
+    temperature: Optional[float]
+    blood_pressure: Optional[str]
+    respiratory_rate: Optional[int]
+    priority: Optional[str]
 
     class Config:
         from_attributes = True
