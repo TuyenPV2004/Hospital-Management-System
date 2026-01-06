@@ -109,8 +109,18 @@ class Prescription(Base):
 # Bảng Invoices (Hóa đơn)
 class Invoice(Base):
     __tablename__ = "Invoices"
-
+    
     invoice_id = Column(Integer, primary_key=True, index=True)
     visit_id = Column(Integer, ForeignKey("Visits.visit_id"), unique=True)
-    total_amount = Column(DECIMAL(15, 2), nullable=False)
     payment_time = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # --- CÁC TRƯỜNG MỚI ---
+    medicine_total = Column(DECIMAL(15, 2))
+    exam_fee = Column(DECIMAL(15, 2))
+    procedure_fee = Column(DECIMAL(15, 2))
+    insurance_percent = Column(Integer)
+    final_amount = Column(DECIMAL(15, 2))
+    payment_method = Column(Enum('CASH', 'TRANSFER', 'CARD'))
+    
+    # Quan hệ
+    visit = relationship("Visit")

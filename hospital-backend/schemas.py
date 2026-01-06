@@ -160,12 +160,24 @@ class PrescriptionResponse(BaseModel):
     class Config:
         from_attributes = True
 
+# Schema tạo hóa đơn thanh toán
+class InvoiceCreate(BaseModel):
+    visit_id: int
+    procedure_fee: float = 0 # Thu ngân nhập thêm nếu có
+    insurance_percent: int = 0 # 0%, 80%, 100%
+    payment_method: str = 'CASH'
 
 # Schema hóa đơn sau khi thanh toán
 class InvoiceResponse(BaseModel):
     invoice_id: int
     visit_id: int
-    total_amount: float
+    medicine_total: float
+    exam_fee: float
+    procedure_fee: float
+    insurance_percent: int
+    total_amount: float # Tổng chưa giảm
+    final_amount: float # Khách thực trả
+    payment_method: str
     payment_time: datetime
     
     class Config:
@@ -177,3 +189,14 @@ class BillDetails(BaseModel):
     medicine_cost: float
     exam_fee: float
     total: float
+
+# Schema cho Báo cáo (Admin)
+class RevenueReport(BaseModel):
+    date: date
+    daily_revenue: float
+    patient_count: int
+
+class TopMedicine(BaseModel):
+    name: str
+    sold_quantity: int
+    stock_quantity: int    
