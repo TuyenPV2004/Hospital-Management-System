@@ -120,14 +120,33 @@ def create_medicine(
 ):
     db_medicine = models.Medicine(
         name=medicine.name,
+        active_ingredient=medicine.active_ingredient,
+        category=medicine.category,
         unit=medicine.unit,
+        dosage=medicine.dosage,
         price=medicine.price,
-        stock_quantity=medicine.stock_quantity
+        import_price=medicine.import_price,
+        stock_quantity=medicine.stock_quantity,
+        expiry_date=medicine.expiry_date,
+        batch_number=medicine.batch_number,
+        manufacturer=medicine.manufacturer,
+        usage_instruction=medicine.usage_instruction
     )
     db.add(db_medicine)
     db.commit()
     db.refresh(db_medicine)
     return db_medicine
+
+# (MỚI) API cảnh báo thuốc sắp hết hạn (dưới 30 ngày)
+@app.get("/medicines/expiry-alert", response_model=list[schemas.MedicineResponse])
+def get_expiring_medicines(db: Session = Depends(get_db)):
+    from datetime import datetime, timedelta
+    thirty_days_later = datetime.now() + timedelta(days=30)
+    
+    # Lấy thuốc có hạn sử dụng nhỏ hơn 30 ngày tới
+    return db.query(models.Medicine).filter(
+        models.Medicine.expiry_date <= thirty_days_later
+    ).all()
 
 # --- API 6: Lấy danh sách thuốc (Để bác sĩ chọn) ---
 @app.get("/medicines", response_model=list[schemas.MedicineResponse])
