@@ -48,19 +48,27 @@ class PatientResponse(PatientBase):
         from_attributes = True
 
 
-# --- schemas.py (Thêm vào cuối file) ---
 # --- SCHEMAS CHO THUỐC (MEDICINE) ---
 class MedicineBase(BaseModel):
     name: str
+    active_ingredient: Optional[str] = None
+    category: Optional[str] = None
     unit: str
-    price: float
+    dosage: Optional[str] = None
+    price: float        # Giá bán
+    import_price: float # Giá nhập
     stock_quantity: int
+    expiry_date: Optional[date] = None # YYYY-MM-DD
+    batch_number: Optional[str] = None
+    manufacturer: Optional[str] = None
+    usage_instruction: Optional[str] = None
 
 class MedicineCreate(MedicineBase):
     pass
 
 class MedicineResponse(MedicineBase):
     medicine_id: int
+    created_at: datetime
     class Config:
         from_attributes = True
 
