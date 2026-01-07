@@ -83,8 +83,16 @@ const Dashboard = () => {
             </button>
 
             <button 
-                onClick={() => navigate('/pharmacy')} className="px-6 py-3 bg-teal-600 text-white font-bold rounded shadow">
+                onClick={() => navigate('/pharmacy')} className="px-6 py-3 bg-teal-600 text-white font-bold rounded shadow hover:bg-teal-700"
+            >
                 Quản Lý Kho Dược
+            </button>
+
+            <button 
+                onClick={() => navigate('/inpatient')}
+                className="px-6 py-3 bg-orange-600 text-white font-bold rounded shadow hover:bg-orange-700"
+            >
+                Sơ Đồ Giường Bệnh (Nội Trú)
             </button>
         </div>
         </div>      
