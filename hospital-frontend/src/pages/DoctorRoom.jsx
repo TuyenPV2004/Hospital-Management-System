@@ -6,9 +6,11 @@ const DoctorRoom = () => {
     // --- STATE ---
     const [waitingList, setWaitingList] = useState([]);
     const [medicines, setMedicines] = useState([]);
+    const [services, setServices] = useState([]);
     const [selectedVisit, setSelectedVisit] = useState(null);
     const [patientHistory, setPatientHistory] = useState(null); // Chi tiết bệnh nhân (Dị ứng, lịch sử)
     const [billPreview, setBillPreview] = useState(null);
+    const [orderedServices, setOrderedServices] = useState([]); // Dịch vụ đã chỉ định của BN hiện tại
 
     // Form Chẩn đoán (Nâng cấp)
     const [examForm, setExamForm] = useState({
@@ -35,7 +37,14 @@ const DoctorRoom = () => {
     useEffect(() => {
         fetchWaitingList();
         fetchMedicines();
+        fetchServices();
     }, []);
+
+    useEffect(() => {
+        if (selectedVisit) {
+            fetchOrderedServices();
+        }
+    }, [selectedVisit]);
 
     // --- API CALLS ---
     const fetchWaitingList = async () => {
@@ -49,6 +58,20 @@ const DoctorRoom = () => {
         try {
             const res = await api.get('/medicines');
             setMedicines(res.data);
+        } catch (err) { console.error(err); }
+    };
+
+    const fetchServices = async () => {
+        try {
+            const res = await api.get('/services');
+            setServices(res.data);
+        } catch (err) { console.error(err); }
+    };
+
+    const fetchOrderedServices = async () => {
+        try {
+            const res = await api.get(`/visits/${selectedVisit.visit_id}/services`);
+            setOrderedServices(res.data);
         } catch (err) { console.error(err); }
     };
 
@@ -118,6 +141,18 @@ const DoctorRoom = () => {
             setSelectedVisit(null);
             fetchWaitingList();
         } catch (err) { alert("Lỗi"); }
+    };
+
+    // Hàm chỉ định dịch vụ
+    const handleOrderService = async (serviceId) => {
+        if (!selectedVisit || !serviceId) return;
+        try {
+            await api.post(`/visits/${selectedVisit.visit_id}/services`, { service_id: parseInt(serviceId), quantity: 1 });
+            alert("✅ Đã chỉ định dịch vụ!");
+            fetchOrderedServices();
+        } catch (err) {
+            alert("Lỗi: " + (err.response?.data?.detail || "Không thể chỉ định dịch vụ"));
+        }
     };
 
     return (
@@ -316,6 +351,67 @@ const DoctorRoom = () => {
                                 </div>
                             ) : (
                                 <p className="text-gray-400 text-sm italic text-center py-4">Chưa có thuốc...</p>
+                            )}
+                        </div>
+
+                        {/* --- KHU VỰC CHỈ ĐỊNH CẬN LÂM SÀNG --- */}
+                        <div className="mt-6 border-t pt-4">
+                            <h3 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
+                                🔬 Chỉ định Cận Lâm Sàng
+                            </h3>
+                            
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium mb-2 text-gray-700">Chọn dịch vụ để chỉ định:</label>
+                                <select className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500" 
+                                    onChange={(e) => handleOrderService(e.target.value)}>
+                                    <option value="">-- Chọn dịch vụ --</option>
+                                    {services.map(s => (
+                                        <option key={s.service_id} value={s.service_id}>
+                                            {s.name} - {s.price?.toLocaleString() || '0'} đ
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {orderedServices.length > 0 ? (
+                                <div className="bg-white rounded border border-gray-200 overflow-hidden">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-gray-100 border-b">
+                                            <tr>
+                                                <th className="p-2 text-left">Tên Dịch vụ</th>
+                                                <th className="p-2 text-center">Trạng thái</th>
+                                                <th className="p-2">Kết quả</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {orderedServices.map(req => (
+                                                <tr key={req.request_id} className="border-b hover:bg-gray-50">
+                                                    <td className="p-2 font-medium text-gray-700">{req.service_name}</td>
+                                                    <td className="p-2 text-center">
+                                                        <span className={`px-2 py-1 rounded text-xs text-white font-bold ${
+                                                            req.status === 'COMPLETED' ? 'bg-green-500' : 
+                                                            req.status === 'IN_PROGRESS' ? 'bg-blue-500' : 
+                                                            'bg-orange-400'
+                                                        }`}>
+                                                            {req.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-2 text-xs">
+                                                        {req.result ? (
+                                                            <div className="space-y-1">
+                                                                <p className="font-bold text-blue-600">{req.result.conclusion}</p>
+                                                                <p className="text-gray-600 line-clamp-2">{req.result.result_data}</p>
+                                                                {req.result.image_url && <a href={req.result.image_url} target="_blank" rel="noreferrer" className="text-blue-500 underline block">📷 Xem ảnh</a>}
+                                                            </div>
+                                                        ) : <span className="text-gray-400 italic">Chưa có KQ</span>}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <p className="text-gray-400 text-sm italic text-center py-4 bg-gray-50 rounded">Chưa chỉ định dịch vụ nào</p>
                             )}
                         </div>
                     </div>

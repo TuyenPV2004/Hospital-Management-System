@@ -71,29 +71,34 @@ def register_patient(user: schemas.UserRegister, db: Session = Depends(get_db)):
     db.refresh(new_user)
     return new_user
 
-# --- API: Admin tạo nhân viên (Yêu cầu Token Admin) ---
+# --- API: Admin tạo nhân viên (DOCTOR, NURSE, ADMIN) ---
 @app.post("/admin/users", response_model=schemas.UserResponse)
 def create_staff(
     user: schemas.UserCreateStaff, 
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme) # Bắt buộc đăng nhập
+    token: str = Depends(oauth2_scheme)
 ):
-    # (Thêm logic kiểm tra user.role phải là DOCTOR/NURSE/ADMIN nếu cần chặt chẽ)
-    
-    # Check trùng
+    # Check trùng username
     if db.query(models.User).filter(models.User.username == user.username).first():
         raise HTTPException(status_code=400, detail="Username đã tồn tại")
 
     hashed_password = security.pwd_context.hash(user.password)
     
+    # --- SỬA ĐOẠN NÀY ---
+    # Nếu email/phone là chuỗi rỗng "", chuyển thành None để DB hiểu là NULL (được phép trùng NULL)
+    email_val = user.email if user.email and user.email.strip() != "" else None
+    phone_val = user.phone if user.phone and user.phone.strip() != "" else None
+    
     new_staff = models.User(
         username=user.username,
         password=hashed_password,
         full_name=user.full_name,
-        role=user.role, # <--- Role do Admin chọn
-        email=user.email,
-        phone=user.phone
+        role=user.role,
+        email=email_val, # Sử dụng giá trị đã xử lý
+        phone=phone_val  # Sử dụng giá trị đã xử lý
     )
+    # --------------------
+
     db.add(new_staff)
     db.commit()
     db.refresh(new_staff)
@@ -808,3 +813,144 @@ def create_appointment(
     db.refresh(new_appt)
     
     return new_appt
+
+# --- API SERVICES 1: Lấy danh mục dịch vụ ---
+@app.get("/services", response_model=list[schemas.ServiceResponse])
+def get_services(db: Session = Depends(get_db)):
+    return db.query(models.Service).filter(models.Service.is_active == True).all()
+
+# --- API SERVICES 2: Bác sĩ chỉ định dịch vụ ---
+@app.post("/visits/{visit_id}/services", response_model=schemas.ServiceRequestResponse)
+def create_service_request(
+    visit_id: int,
+    req: schemas.ServiceRequestCreate,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    # Lấy doctor_id từ token (giả lập logic lấy user hiện tại)
+    # Trong thực tế bạn nên decode token để lấy user_id
+    # Ở đây tôi hardcode hoặc query tạm user DOCTOR đầu tiên để demo
+    current_user = db.query(models.User).filter(models.User.role == 'DOCTOR').first() 
+    doctor_id = current_user.user_id if current_user else 2
+
+    new_req = models.ServiceRequest(
+        visit_id=visit_id,
+        service_id=req.service_id,
+        doctor_id=doctor_id,
+        quantity=req.quantity,
+        status="PENDING"
+    )
+    db.add(new_req)
+    db.commit()
+    db.refresh(new_req)
+    
+    # Map dữ liệu trả về
+    service = db.query(models.Service).get(req.service_id)
+    new_req.service_name = service.name
+    new_req.price = service.price
+    return new_req
+
+# --- API SERVICES 3: Lấy danh sách chỉ định của 1 lượt khám (kèm kết quả) ---
+@app.get("/visits/{visit_id}/services", response_model=list[schemas.ServiceRequestResponse])
+def get_visit_services(visit_id: int, db: Session = Depends(get_db)):
+    requests = db.query(models.ServiceRequest).filter(models.ServiceRequest.visit_id == visit_id).all()
+    
+    # Map tên dịch vụ và kết quả vào response
+    for req in requests:
+        req.service_name = req.service.name
+        req.price = req.service.price
+        # req.result tự động load nhờ relationship
+    return requests
+
+# --- API SERVICES 4: Kỹ thuật viên xem danh sách chờ (Queue) ---
+@app.get("/service-requests", response_model=list[schemas.ServiceRequestResponse])
+def get_pending_requests(status: str = "PENDING", db: Session = Depends(get_db)):
+    # Lấy các request theo trạng thái
+    reqs = db.query(models.ServiceRequest).filter(models.ServiceRequest.status == status).all()
+    
+    # Map thêm thông tin
+    for req in reqs:
+        req.service_name = req.service.name
+        req.price = req.service.price
+    return reqs
+
+# --- API SERVICES 5: Kỹ thuật viên trả kết quả ---
+@app.post("/service-results", response_model=schemas.ServiceResultResponse)
+def create_service_result(
+    res: schemas.ServiceResultCreate,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    # Lấy technician_id (Giả lập logic)
+    current_user = db.query(models.User).filter(models.User.role == 'TECHNICIAN').first() 
+    tech_id = current_user.user_id if current_user else 3 # Fallback
+
+    # 1. Tạo kết quả
+    new_result = models.ServiceResult(
+        request_id=res.request_id,
+        technician_id=tech_id,
+        result_data=res.result_data,
+        image_url=res.image_url,
+        conclusion=res.conclusion
+    )
+    db.add(new_result)
+    
+    # 2. Cập nhật trạng thái Request -> COMPLETED
+    req = db.query(models.ServiceRequest).get(res.request_id)
+    req.status = "COMPLETED"
+    
+    db.commit()
+    db.refresh(new_result)
+    return new_result
+
+# --- CẬP NHẬT API BILL (Tính thêm tiền dịch vụ) ---
+@app.get("/visits/{visit_id}/bill")
+def preview_bill(
+    visit_id: int,
+    insurance_percent: int = 0,
+    procedure_fee: float = 0, # Có thể bỏ tham số này nếu dùng ServiceRequest hết
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    # 1. Tính tiền thuốc
+    prescriptions = db.query(models.Prescription).filter(models.Prescription.visit_id == visit_id).all()
+    medicine_total = 0
+    medicine_details = []
+    for pres in prescriptions:
+        med = db.query(models.Medicine).get(pres.medicine_id)
+        cost = pres.quantity * float(med.price)
+        medicine_total += cost
+        medicine_details.append({"name": med.name, "qty": pres.quantity, "price": med.price, "total": cost})
+
+    # 2. (MỚI) Tính tiền Dịch vụ CLS (Xét nghiệm/Chụp chiếu)
+    service_requests = db.query(models.ServiceRequest).filter(
+        models.ServiceRequest.visit_id == visit_id,
+        models.ServiceRequest.status != 'CANCELLED' # Chỉ tính cái chưa hủy
+    ).all()
+    
+    service_total = 0
+    service_details = []
+    for req in service_requests:
+        srv = req.service
+        cost = req.quantity * float(srv.price)
+        service_total += cost
+        service_details.append({"name": srv.name, "qty": req.quantity, "price": srv.price, "total": cost})
+
+    # 3. Tổng hợp
+    # procedure_fee (thủ thuật ngoài) có thể giữ hoặc bỏ, ở đây ta cộng dồn vào
+    sub_total = medicine_total + service_total + FIXED_EXAM_FEE + procedure_fee
+    discount = sub_total * (insurance_percent / 100)
+    final_amount = sub_total - discount
+    
+    return {
+        "medicine_details": medicine_details,
+        "service_details": service_details, # Trả thêm chi tiết dịch vụ
+        "medicine_total": medicine_total,
+        "service_total": service_total,     # Tổng tiền dịch vụ
+        "exam_fee": FIXED_EXAM_FEE,
+        "procedure_fee": procedure_fee,
+        "sub_total": sub_total,
+        "insurance_percent": insurance_percent,
+        "discount": discount,
+        "final_amount": final_amount
+    }

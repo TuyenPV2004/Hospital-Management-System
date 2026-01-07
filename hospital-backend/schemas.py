@@ -287,3 +287,54 @@ class AppointmentCreate(BaseModel):
     dob: Optional[date] = None
     gender: Optional[str] = None
     address: Optional[str] = None    
+    
+    
+    # schemas.py (Thêm vào cuối file)
+
+# --- SCHEMAS DỊCH VỤ ---
+class ServiceBase(BaseModel):
+    name: str
+    type: str
+    price: float
+    description: Optional[str] = None
+
+class ServiceResponse(ServiceBase):
+    service_id: int
+    class Config:
+        from_attributes = True
+
+# --- SCHEMAS KẾT QUẢ ---
+class ServiceResultBase(BaseModel):
+    result_data: Optional[str] = None
+    image_url: Optional[str] = None
+    conclusion: Optional[str] = None
+
+class ServiceResultCreate(ServiceResultBase):
+    request_id: int
+    # technician_id sẽ lấy từ token đăng nhập
+
+class ServiceResultResponse(ServiceResultBase):
+    result_id: int
+    technician_id: int
+    performed_at: datetime
+    class Config:
+        from_attributes = True
+
+# --- SCHEMAS YÊU CẦU (REQUEST) ---
+class ServiceRequestCreate(BaseModel):
+    service_id: int
+    quantity: int = 1
+
+class ServiceRequestResponse(BaseModel):
+    request_id: int
+    visit_id: int
+    service_id: int
+    doctor_id: int
+    status: str
+    created_at: datetime
+    service_name: str # Để hiển thị tên dịch vụ cho dễ
+    price: float      # Để hiển thị giá
+    result: Optional[ServiceResultResponse] = None # Kèm kết quả nếu có
+
+    class Config:
+        from_attributes = True

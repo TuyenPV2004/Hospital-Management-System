@@ -169,3 +169,43 @@ class Appointment(Base):
     # Quan hệ
     patient = relationship("Patient")
     doctor = relationship("User")
+    
+    
+class Service(Base):
+    __tablename__ = "Services"
+    service_id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    type = Column(Enum('LAB', 'IMAGING', 'OTHER'), nullable=False)
+    price = Column(DECIMAL(10, 2), nullable=False)
+    description = Column(Text)
+    is_active = Column(Boolean, default=True)
+
+class ServiceRequest(Base):
+    __tablename__ = "ServiceRequests"
+    request_id = Column(Integer, primary_key=True, index=True)
+    visit_id = Column(Integer, ForeignKey("Visits.visit_id"))
+    service_id = Column(Integer, ForeignKey("Services.service_id"))
+    doctor_id = Column(Integer, ForeignKey("Users.user_id"))
+    quantity = Column(Integer, default=1)
+    status = Column(Enum('PENDING', 'COMPLETED', 'CANCELLED'), default='PENDING')
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Quan hệ
+    service = relationship("Service")
+    visit = relationship("Visit")
+    doctor = relationship("User")
+    # Quan hệ 1-1 với kết quả (một phiếu yêu cầu có 1 kết quả)
+    result = relationship("ServiceResult", back_populates="request", uselist=False)
+
+class ServiceResult(Base):
+    __tablename__ = "ServiceResults"
+    result_id = Column(Integer, primary_key=True, index=True)
+    request_id = Column(Integer, ForeignKey("ServiceRequests.request_id"))
+    technician_id = Column(Integer, ForeignKey("Users.user_id"))
+    result_data = Column(Text)
+    image_url = Column(String(500))
+    conclusion = Column(Text)
+    performed_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    request = relationship("ServiceRequest", back_populates="result")
+    technician = relationship("User")
