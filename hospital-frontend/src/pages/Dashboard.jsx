@@ -1,11 +1,12 @@
 // src/pages/Dashboard.jsx
 import React, { useEffect, useState } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom'; // Thêm Link, useLocation
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../services/api';
+import { hasRole } from '../utils/roleGuard';
 
 const Dashboard = () => {
     const navigate = useNavigate();
-    const location = useLocation(); // Để kiểm tra trang hiện tại
+    const location = useLocation();
     const [user, setUser] = useState(null);
 
     useEffect(() => {
@@ -24,8 +25,49 @@ const Dashboard = () => {
 
     const handleLogout = () => {
         localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
         navigate('/');
     };
+
+    // ===== ĐỊNH NGHĨA DANH SÁCH MENU DỰA TRÊN ROLE =====
+    const getMenuItems = (role) => {
+        const allMenus = {
+            // MENU CHUNG (Tất cả người dùng đã đăng nhập)
+            common: [
+                { path: "/dashboard", label: "Tổng quan", icon: "📊", roles: ["ADMIN", "DOCTOR", "NURSE", "PATIENT", "TECHNICIAN"] },
+                { path: "/booking", label: "Đặt lịch khám", icon: "📅", roles: ["ADMIN", "DOCTOR", "NURSE", "PATIENT"] },
+            ],
+            
+            // CHỨC NĂNG CHÍNH
+            functions: [
+                { path: "/reception", label: "Tiếp đón (Y Tá)", icon: "🏥", roles: ["ADMIN", "NURSE"] },
+                { path: "/doctor", label: "Phòng khám (BS)", icon: "🩺", roles: ["ADMIN", "DOCTOR"] },
+                { path: "/payment", label: "Thu ngân", icon: "💸", roles: ["ADMIN"] },
+                { path: "/inpatient", label: "Nội trú", icon: "🛏️", roles: ["ADMIN", "NURSE"] },
+            ],
+            
+            // KHO & VẬT TƯ (CHỈ ADMIN)
+            inventory: [
+                { path: "/inventory/import", label: "Nhập Kho", icon: "📥", roles: ["ADMIN"] },
+                { path: "/inventory/alerts", label: "Cảnh báo Hạn/Tồn", icon: "⚠️", roles: ["ADMIN"] },
+            ],
+            
+            // QUẢN LÝ HỆ THỐNG (CHỈ ADMIN)
+            admin: [
+                { path: "/admin/users", label: "Quản lý Nhân Viên", icon: "👥", roles: ["ADMIN"] },
+                { path: "/admin", label: "Báo Cáo & Thống Kê", icon: "📈", roles: ["ADMIN"] },
+            ]
+        };
+
+        return {
+            common: allMenus.common.filter(item => item.roles.includes(role)),
+            functions: allMenus.functions.filter(item => item.roles.includes(role)),
+            inventory: allMenus.inventory.filter(item => item.roles.includes(role)),
+            admin: allMenus.admin.filter(item => item.roles.includes(role))
+        };
+    };
+
+    const menus = user ? getMenuItems(user.role) : { common: [], functions: [], inventory: [], admin: [] };
 
     return (
         <div className="flex h-screen bg-gray-100">
@@ -39,74 +81,72 @@ const Dashboard = () => {
                 
                 <nav className="p-4">
                     <ul className="space-y-2">
-                        {/* 1. Tổng quan */}
-                        <li>
-                            <Link to="/dashboard" className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${location.pathname === '/dashboard' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}>
-                                <span className="text-xl">📊</span>
-                                <span className="font-bold">Tổng quan</span>
-                            </Link>
-                        </li>
+                        {/* ===== MENU CHUNG ===== */}
+                        {menus.common.map(item => (
+                            <li key={item.path}>
+                                <Link to={item.path} className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${location.pathname === item.path ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}>
+                                    <span className="text-xl">{item.icon}</span>
+                                    <span className="font-bold">{item.label}</span>
+                                </Link>
+                            </li>
+                        ))}
 
-                        {/* 2. Đặt lịch */}
-                        <li>
-                            <Link to="/booking" className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${location.pathname === '/booking' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}>
-                                <span className="text-xl">📅</span>
-                                <span className="font-bold">Đặt lịch khám</span>
-                            </Link>
-                        </li>
+                        {/* ===== CHỨC NĂNG CHÍNH ===== */}
+                        {menus.functions.length > 0 && (
+                            <>
+                                <li><div className="p-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Chức năng</div></li>
+                                {menus.functions.map(item => (
+                                    <li key={item.path}>
+                                        <Link to={item.path} className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${location.pathname === item.path ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}>
+                                            <span className="text-xl">{item.icon}</span>
+                                            <span className="font-bold">{item.label}</span>
+                                        </Link>
+                                    </li>
+                                ))}
+                            </>
+                        )}
 
-                        {/* 3. Các chức năng chính (Chuyển từ Button sang Menu) */}
-                        <li><div className="p-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Chức năng</div></li>
-                        
-                        <li>
-                            <Link to="/reception" className="flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-50">
-                                <span className="text-xl">desk</span>
-                                <span className="font-bold">Tiếp đón (Y Tá)</span>
-                            </Link>
-                        </li>
-                        <li>
-                            <Link to="/doctor" className="flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-50">
-                                <span className="text-xl">🩺</span>
-                                <span className="font-bold">Phòng khám (BS)</span>
-                            </Link>
-                        </li>
-                        <li>
-                            <Link to="/payment" className="flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-50">
-                                <span className="text-xl">💸</span>
-                                <span className="font-bold">Thu ngân</span>
-                            </Link>
-                        </li>
-                        <li>
-                            <Link to="/inpatient" className="flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-50">
-                                <span className="text-xl">🛏️</span>
-                                <span className="font-bold">Nội trú</span>
-                            </Link>
-                        </li>
+                        {/* ===== KHO & VẬT TƯ ===== */}
+                        {menus.inventory.length > 0 && (
+                            <>
+                                <li>
+                                    <div className="p-3 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                        Quản lý Kho Dược
+                                    </div>
+                                </li>
+                                {menus.inventory.map(item => (
+                                    <li key={item.path}>
+                                        <Link to={item.path} className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${location.pathname === item.path ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}>
+                                            <span className="text-xl">{item.icon}</span>
+                                            <span className="font-bold">{item.label}</span>
+                                        </Link>
+                                    </li>
+                                ))}
+                            </>
+                        )}
 
-                        {/* --- 4. KHO & VẬT TƯ (BẠN YÊU CẦU THÊM) --- */}
-                        <li>
-                            <div className="p-3 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                                Quản lý Kho Dược
-                            </div>
-                        </li>
+                        {/* ===== QUẢN LÝ HỆ THỐNG ===== */}
+                        {menus.admin.length > 0 && (
+                            <>
+                                <li>
+                                    <div className="p-3 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                        Quản lý Hệ Thống
+                                    </div>
+                                </li>
+                                {menus.admin.map(item => (
+                                    <li key={item.path}>
+                                        <Link to={item.path} className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${location.pathname === item.path ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}>
+                                            <span className="text-xl">{item.icon}</span>
+                                            <span className="font-bold">{item.label}</span>
+                                        </Link>
+                                    </li>
+                                ))}
+                            </>
+                        )}
 
-                        <li>
-                            <Link to="/inventory/import" className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${location.pathname === '/inventory/import' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}>
-                                <span className="text-xl">📥</span>
-                                <span className="font-bold">Nhập Kho</span>
-                            </Link>
-                        </li>
-
-                        <li>
-                            <Link to="/inventory/alerts" className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${location.pathname === '/inventory/alerts' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}>
-                                <span className="text-xl">⚠️</span>
-                                <span className="font-bold">Cảnh báo Hạn/Tồn</span>
-                            </Link>
-                        </li>
-                        {/* --------------------------------------------- */}
-                        
+                        {/* ===== ĐĂNG XUẤT ===== */}
                         <li className="pt-4 border-t mt-4">
-                            <button onClick={handleLogout} className="flex items-center space-x-3 p-3 rounded-lg text-red-600 hover:bg-red-50 w-full text-left">
+                            <button onClick={handleLogout} className="flex items-center space-x-3 p-3 rounded-lg text-red-600 hover:bg-red-50 w-full text-left transition">
                                 <span className="text-xl">🚪</span>
                                 <span className="font-bold">Đăng xuất</span>
                             </button>
@@ -150,6 +190,6 @@ const Dashboard = () => {
             </div>
         </div>
     );
-};
+}
 
 export default Dashboard;

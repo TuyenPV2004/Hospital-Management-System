@@ -76,8 +76,9 @@ def register_patient(user: schemas.UserRegister, db: Session = Depends(get_db)):
 def create_staff(
     user: schemas.UserCreateStaff, 
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    current_user: dict = Depends(security.check_role(["ADMIN"]))
 ):
+    # ✅ CHỈ ADMIN CÓ QUY HẠN TẠO NHÂN VIÊN
     # Check trùng username
     if db.query(models.User).filter(models.User.username == user.username).first():
         raise HTTPException(status_code=400, detail="Username đã tồn tại")
@@ -186,7 +187,11 @@ def reset_password(request: schemas.ResetPasswordRequest, db: Session = Depends(
 
 # --- API: Lấy danh sách nhân viên (Cho Admin xem) ---
 @app.get("/admin/users", response_model=list[schemas.UserResponse])
-def get_all_users(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
+def get_all_users(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN"]))
+):
+    # ✅ CHỈ ADMIN CÓ QUYỀN XEM DANH SÁCH NHÂN VIÊN
     # Chỉ lấy Admin, Doctor, Nurse (bỏ qua Patient cho đỡ rối list nhân viên)
     return db.query(models.User).filter(models.User.role.in_(['ADMIN', 'DOCTOR', 'NURSE','TECHNICIAN'])).all()
 
@@ -209,13 +214,13 @@ def read_users_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get
 
 # --- API 3: Thêm bệnh nhân mới ---
 from typing import List, Optional
-# dependency 'token' đảm bảo phải đăng nhập mới được thêm
 @app.post("/patients", response_model=schemas.PatientResponse)
 def create_patient(
     patient: schemas.PatientCreate, 
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme) # Bắt buộc phải có Token
+    current_user: dict = Depends(security.check_role(["ADMIN", "DOCTOR", "NURSE"]))
 ):
+    # ✅ CHỈ Y TÁ, BÁC SĨ, ADMIN CÓ QUYỀN TẠO BỆNH NHÂN
     # 1. Kiểm tra xem mã BHYT đã tồn tại chưa (tránh trùng lặp)
     if patient.insurance_card:
         existing_patient = db.query(models.Patient).filter(
@@ -245,8 +250,9 @@ def create_patient(
 def get_patients(
     search: Optional[str] = None, # Tham số tìm kiếm tùy chọn (Query param)
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    current_user: dict = Depends(security.check_role(["ADMIN", "DOCTOR", "NURSE"]))
 ):
+    # ✅ CHỈ Y TÁ, BÁC SĨ, ADMIN CÓ QUYỀN XEM DANH SÁCH BỆNH NHÂN
     # Nếu có từ khóa tìm kiếm (VD: ?search=Nguyen)
     if search:
         # Tìm theo Tên HOẶC số BHYT
@@ -266,8 +272,9 @@ def get_patients(
 def create_medicine(
     medicine: schemas.MedicineCreate, 
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    current_user: dict = Depends(security.check_role(["ADMIN"]))
 ):
+    # ✅ CHỈ ADMIN CÓ QUYỀN THÊM THUỐC VÀO KHO
     db_medicine = models.Medicine(
         name=medicine.name,
         active_ingredient=medicine.active_ingredient,
@@ -289,7 +296,11 @@ def create_medicine(
 
 # (MỚI) API cảnh báo thuốc sắp hết hạn (dưới 30 ngày)
 @app.get("/medicines/expiry-alert", response_model=list[schemas.MedicineResponse])
-def get_expiring_medicines(db: Session = Depends(get_db)):
+def get_expiring_medicines(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN"]))
+):
+    # ✅ CHỈ ADMIN CÓ QUYỀN XEM CẢNH BÁO HẠN SỬ DỤNG
     from datetime import datetime, timedelta
     thirty_days_later = datetime.now() + timedelta(days=30)
     
@@ -300,7 +311,11 @@ def get_expiring_medicines(db: Session = Depends(get_db)):
 
 # --- API 6: Lấy danh sách thuốc (Để bác sĩ chọn) ---
 @app.get("/medicines", response_model=list[schemas.MedicineResponse])
-def get_medicines(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
+def get_medicines(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN", "DOCTOR", "NURSE", "TECHNICIAN"]))
+):
+    # ✅ CHỈ DOCTOR, NURSE, ADMIN, TECHNICIAN CÓ QUYỀN XEM DANH SÁCH THUỐC
     return db.query(models.Medicine).all()
 
 # --- API 7: Tạo lượt khám (Y tá tiếp nhận) ---
@@ -308,8 +323,9 @@ def get_medicines(db: Session = Depends(get_db), token: str = Depends(oauth2_sch
 def create_visit(
     visit: schemas.VisitCreate, 
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    current_user: dict = Depends(security.check_role(["ADMIN", "NURSE"]))
 ):
+    # ✅ CHỈ Y TÁ VÀ ADMIN CÓ QUYỀN TẠO LƯỢT KHÁM
     # (Logic kiểm tra bệnh nhân cũ giữ nguyên...)
     
     # Tạo lượt khám với đầy đủ thông tin sinh tồn
@@ -334,8 +350,9 @@ def create_visit(
 def get_visits(
     status: Optional[str] = None, # Cho phép lọc ?status=WAITING
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    current_user: dict = Depends(security.check_role(["ADMIN", "DOCTOR", "NURSE"]))
 ):
+    # ✅ CHỈ DOCTOR, NURSE, ADMIN CÓ QUYỀN XEM DANH SÁCH KHÁM
     query = db.query(models.Visit)
     if status:
         query = query.filter(models.Visit.status == status)
@@ -348,8 +365,9 @@ def update_diagnosis(
     visit_id: int, 
     visit_update: schemas.VisitUpdate, 
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    current_user: dict = Depends(security.check_role(["DOCTOR"]))
 ):
+    # ✅ CHỈ BÁC SĨ CÓ QUYỀN CẬP NHẬT CHẨN ĐOÁN
     visit = db.query(models.Visit).filter(models.Visit.visit_id == visit_id).first()
     if not visit:
         raise HTTPException(status_code=404, detail="Lượt khám không tồn tại")
@@ -370,8 +388,9 @@ def update_diagnosis(
 def create_prescription(
     pres: schemas.PrescriptionCreate, 
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    current_user: dict = Depends(security.check_role(["DOCTOR"]))
 ):
+    # ✅ CHỈ BÁC SĨ CÓ QUYỀN KÊ ĐƠN THUỐC
     # (Logic kiểm tra tồn kho giữ nguyên...)
     medicine = db.query(models.Medicine).filter(models.Medicine.medicine_id == pres.medicine_id).first()
     if not medicine:
@@ -404,8 +423,9 @@ def create_prescription(
 def finish_visit(
     visit_id: int, 
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    current_user: dict = Depends(security.check_role(["DOCTOR"]))
 ):
+    # ✅ CHỈ BÁC SĨ CÓ QUYỀN KẾT THÚC KHÁM
     visit = db.query(models.Visit).filter(models.Visit.visit_id == visit_id).first()
     if not visit:
         raise HTTPException(status_code=404, detail="Lượt khám không tồn tại")
@@ -423,8 +443,9 @@ def preview_bill(
     insurance_percent: int = 0, # Nhận tham số BHYT từ URL
     procedure_fee: float = 0,   # Nhận phí thủ thuật
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    current_user: dict = Depends(security.check_role(["ADMIN", "DOCTOR"]))
 ):
+    # ✅ CHỈ DOCTOR VÀ ADMIN CÓ QUYỀN XEM HÓA ĐƠN
     # 1. Tính tiền thuốc
     prescriptions = db.query(models.Prescription).filter(models.Prescription.visit_id == visit_id).all()
     medicine_total = 0
@@ -460,8 +481,9 @@ def preview_bill(
 def create_invoice(
     inv: schemas.InvoiceCreate,
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    current_user: dict = Depends(security.check_role(["ADMIN"]))
 ):
+    # ✅ CHỈ ADMIN CÓ QUYỀN TẠO HÓA ĐƠN
     # (Logic tính toán lặp lại để bảo mật - nên tách thành hàm riêng nếu dự án lớn)
     prescriptions = db.query(models.Prescription).filter(models.Prescription.visit_id == inv.visit_id).all()
     medicine_total = sum([p.quantity * float(db.query(models.Medicine).get(p.medicine_id).price) for p in prescriptions])
@@ -501,7 +523,11 @@ def create_invoice(
 
 # 1. Doanh thu theo ngày (7 ngày gần nhất)
 @app.get("/reports/revenue", response_model=list[schemas.RevenueReport])
-def report_revenue(db: Session = Depends(get_db)):
+def report_revenue(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN"]))
+):
+    # ✅ CHỈ ADMIN CÓ QUYỀN XEM BÁOCÁO DOANH THU
     # Query Group By Date(payment_time)
     results = db.query(
         func.date(models.Invoice.payment_time).label("date"),
@@ -514,7 +540,11 @@ def report_revenue(db: Session = Depends(get_db)):
 
 # 2. Top thuốc bán chạy
 @app.get("/reports/top-medicines", response_model=list[schemas.TopMedicine])
-def report_top_medicines(db: Session = Depends(get_db)):
+def report_top_medicines(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN"]))
+):
+    # ✅ CHỈ ADMIN CÓ QUYỀN XEM BÁOCÁO TOP THUỐC
     results = db.query(
         models.Medicine.name,
         func.sum(models.Prescription.quantity).label("sold_quantity"),

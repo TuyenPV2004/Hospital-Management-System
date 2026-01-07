@@ -1,5 +1,6 @@
 // src/App.jsx
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -11,38 +12,85 @@ import Payment from './pages/Payment';
 import AdminReport from './pages/AdminReport';
 import Booking from './pages/Booking';
 import AdminUsers from './pages/AdminUsers';
-
-// --- 1. IMPORT CÁC TRANG MỚI ---
 import InventoryImport from './pages/InventoryImport';
 import InventoryAlerts from './pages/InventoryAlerts';
 import InpatientMap from './pages/InpatientMap';
-// ------------------------------
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* Public Routes */}
+        {/* ===== PUBLIC ROUTES (Không cần token) ===== */}
         <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         
-        {/* Protected Routes */}
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/reception" element={<Reception />} />
-        <Route path="/doctor" element={<DoctorRoom />} />
-        <Route path="/pharmacy" element={<Pharmacy />} />
-        <Route path="/payment" element={<Payment />} />
-        <Route path="/admin" element={<AdminReport />} />
-        <Route path="/admin/users" element={<AdminUsers />} />
-        <Route path="/booking" element={<Booking />} />
-
-        {/* --- 2. THÊM CÁC ROUTE MỚI VÀO ĐÂY --- */}
-        <Route path="/inventory/import" element={<InventoryImport />} />
-        <Route path="/inventory/alerts" element={<InventoryAlerts />} />
-        <Route path="/inpatient" element={<InpatientMap />} />
-        {/* ------------------------------------- */}
+        {/* ===== PROTECTED ROUTES (Cần kiểm tra quyền) ===== */}
+        {/* Dashboard - Tất cả người dùng đã đăng nhập */}
+        <Route 
+          path="/dashboard" 
+          element={<ProtectedRoute allowedRoles={["ADMIN", "DOCTOR", "NURSE", "PATIENT", "TECHNICIAN"]} Component={Dashboard} />} 
+        />
         
+        {/* Booking - Tất cả người dùng đã đăng nhập */}
+        <Route 
+          path="/booking" 
+          element={<ProtectedRoute allowedRoles={["ADMIN", "DOCTOR", "NURSE", "PATIENT"]} Component={Booking} />} 
+        />
+        
+        {/* Reception - CHỈ NURSE & ADMIN */}
+        <Route 
+          path="/reception" 
+          element={<ProtectedRoute allowedRoles={["ADMIN", "NURSE"]} Component={Reception} />} 
+        />
+        
+        {/* Doctor Room - CHỈ DOCTOR & ADMIN */}
+        <Route 
+          path="/doctor" 
+          element={<ProtectedRoute allowedRoles={["ADMIN", "DOCTOR"]} Component={DoctorRoom} />} 
+        />
+        
+        {/* Pharmacy - CHỈ ADMIN & NURSE */}
+        <Route 
+          path="/pharmacy" 
+          element={<ProtectedRoute allowedRoles={["ADMIN", "NURSE"]} Component={Pharmacy} />} 
+        />
+        
+        {/* Payment - CHỈ ADMIN */}
+        <Route 
+          path="/payment" 
+          element={<ProtectedRoute allowedRoles={["ADMIN"]} Component={Payment} />} 
+        />
+        
+        {/* Admin Reports - CHỈ ADMIN */}
+        <Route 
+          path="/admin" 
+          element={<ProtectedRoute allowedRoles={["ADMIN"]} Component={AdminReport} />} 
+        />
+        
+        {/* Admin Users - CHỈ ADMIN */}
+        <Route 
+          path="/admin/users" 
+          element={<ProtectedRoute allowedRoles={["ADMIN"]} Component={AdminUsers} />} 
+        />
+        
+        {/* Inventory Import - CHỈ ADMIN */}
+        <Route 
+          path="/inventory/import" 
+          element={<ProtectedRoute allowedRoles={["ADMIN"]} Component={InventoryImport} />} 
+        />
+        
+        {/* Inventory Alerts - CHỈ ADMIN */}
+        <Route 
+          path="/inventory/alerts" 
+          element={<ProtectedRoute allowedRoles={["ADMIN"]} Component={InventoryAlerts} />} 
+        />
+        
+        {/* Inpatient Map - CHỈ ADMIN & NURSE */}
+        <Route 
+          path="/inpatient" 
+          element={<ProtectedRoute allowedRoles={["ADMIN", "NURSE"]} Component={InpatientMap} />} 
+        />
       </Routes>
     </Router>
   );
