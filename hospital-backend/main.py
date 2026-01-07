@@ -188,7 +188,7 @@ def reset_password(request: schemas.ResetPasswordRequest, db: Session = Depends(
 @app.get("/admin/users", response_model=list[schemas.UserResponse])
 def get_all_users(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
     # Chỉ lấy Admin, Doctor, Nurse (bỏ qua Patient cho đỡ rối list nhân viên)
-    return db.query(models.User).filter(models.User.role.in_(['ADMIN', 'DOCTOR', 'NURSE'])).all()
+    return db.query(models.User).filter(models.User.role.in_(['ADMIN', 'DOCTOR', 'NURSE','TECHNICIAN'])).all()
 
 # --- API 2: Lấy thông tin người dùng hiện tại (Cần Token mới gọi được) ---
 @app.get("/users/me", response_model=schemas.UserResponse)

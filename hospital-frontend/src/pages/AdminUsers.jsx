@@ -47,6 +47,7 @@ const AdminUsers = () => {
                                 <option value="DOCTOR">Bác sĩ (DOCTOR)</option>
                                 <option value="NURSE">Y tá (NURSE)</option>
                                 <option value="ADMIN">Quản trị viên (ADMIN)</option>
+                                <option value="TECHNICIAN">Kỹ thuật viên</option>
                             </select>
                         </div>
                         <input type="text" placeholder="Tên đăng nhập" required className="w-full border p-2 rounded"
@@ -82,7 +83,8 @@ const AdminUsers = () => {
                                     <td className="p-3">
                                         <span className={`px-2 py-1 rounded text-xs text-white font-bold
                                             ${u.role === 'ADMIN' ? 'bg-red-500' : 
-                                              u.role === 'DOCTOR' ? 'bg-green-500' : 'bg-purple-500'}`}>
+                                              u.role === 'DOCTOR' ? 'bg-green-500' : 
+                                              u.role === 'TECHNICIAN' ? 'bg-yellow-500' : 'bg-purple-500'}`}>
                                             {u.role}
                                         </span>
                                     </td>

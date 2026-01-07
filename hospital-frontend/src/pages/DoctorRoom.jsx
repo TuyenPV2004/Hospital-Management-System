@@ -128,10 +128,16 @@ const DoctorRoom = () => {
     };
 
     const updateBillPreview = async () => {
+        if (!selectedVisit) return; // Kiểm tra an toàn
         try {
             const res = await api.get(`/visits/${selectedVisit.visit_id}/bill`);
-            setBillPreview(res.data);
-        } catch (err) { console.error(err); }
+            if (res.data) {
+                setBillPreview(res.data);
+            }
+        } catch (err) { 
+            console.error("Lỗi cập nhật giá:", err);
+            // Không setBillPreview lỗi để tránh crash giao diện
+        }
     };
 
     const handleFinishVisit = async () => {
@@ -339,14 +345,12 @@ const DoctorRoom = () => {
                             {billPreview ? (
                                 <div>
                                     <div className="text-sm space-y-2 max-h-40 overflow-y-auto">
-                                        {/* Lưu ý: Đây chỉ là demo hiển thị tổng tiền. 
-                                            Để hiển thị chi tiết từng viên thuốc đã kê, 
-                                            bạn cần gọi thêm API lấy danh sách Prescription theo visit_id 
-                                        */}
-                                        <p className="italic text-gray-500 text-xs">Tổng tiền thuốc tạm tính: {billPreview.medicine_cost.toLocaleString()} đ</p>
+                                        <p className="italic text-gray-500 text-xs">
+                                            Tổng tiền thuốc tạm tính: {billPreview.medicine_total?.toLocaleString() || 0} đ
+                                        </p>
                                     </div>
                                     <div className="border-t pt-2 mt-2 text-right text-xl font-bold text-red-600">
-                                        Tổng: {billPreview.total.toLocaleString()} đ
+                                        Tổng: {billPreview.sub_total?.toLocaleString() || 0} đ
                                     </div>
                                 </div>
                             ) : (

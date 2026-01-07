@@ -14,7 +14,7 @@ class User(Base):
     password = Column(String(255))
     full_name = Column(String(100))
     # Cập nhật Enum role
-    role = Column(Enum('ADMIN', 'DOCTOR', 'NURSE', 'PATIENT'))
+    role = Column(Enum('ADMIN', 'DOCTOR', 'NURSE', 'PATIENT', 'TECHNICIAN'))
     # Thêm cột mới
     email = Column(String(100), unique=True, nullable=True)
     phone = Column(String(15), nullable=True)
