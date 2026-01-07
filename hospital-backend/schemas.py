@@ -338,3 +338,31 @@ class ServiceRequestResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        
+# --- NỘI TRÚ ---
+class BedBase(BaseModel):
+    bed_id: int
+    bed_number: str
+    status: str
+    room_number: Optional[str] = None # Map từ Room sang
+    price: Optional[float] = None     # Map từ Room sang
+    
+class BedMapResponse(BaseModel):
+    department_name: str
+    beds: List[BedBase]
+
+# Schema Nhập viện
+class AdmissionCreate(BaseModel):
+    patient_id: int
+    bed_id: int
+    initial_diagnosis: str
+    treating_doctor_id: Optional[int] = None
+
+class InpatientResponse(BaseModel):
+    inpatient_id: int
+    patient_name: str
+    bed_number: Optional[str]
+    status: str
+    admission_date: datetime
+    class Config:
+        from_attributes = True             

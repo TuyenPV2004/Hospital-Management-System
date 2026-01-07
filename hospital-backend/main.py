@@ -954,3 +954,121 @@ def preview_bill(
         "discount": discount,
         "final_amount": final_amount
     }
+    
+# --- API NỘI TRÚ 1: Lấy Sơ đồ giường (Bed Map) ---
+@app.get("/beds/map")
+def get_bed_map(db: Session = Depends(get_db)):
+    # Logic: Lấy hết Departments -> Rooms -> Beds
+    # Để đơn giản hóa cho Frontend, ta trả về dạng Flat list hoặc Group by Dept
+    departments = db.query(models.Department).all()
+    result = []
+    
+    for dept in departments:
+        dept_beds = []
+        for room in dept.rooms:
+            for bed in room.beds:
+                # Map thông tin để hiển thị
+                dept_beds.append({
+                    "bed_id": bed.bed_id,
+                    "bed_number": bed.bed_number,
+                    "status": bed.status,
+                    "room_number": room.room_number,
+                    "type": room.type,
+                    "price": float(room.base_price)
+                })
+        result.append({
+            "department_id": dept.department_id,
+            "department_name": dept.name,
+            "beds": dept_beds
+        })
+    return result
+
+# --- API NỘI TRÚ 2: Nhập viện (Admission) ---
+@app.post("/inpatients/admit", response_model=schemas.InpatientResponse)
+def admit_patient(
+    adm: schemas.AdmissionCreate, 
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    # 1. Kiểm tra giường có trống không
+    bed = db.query(models.Bed).filter(models.Bed.bed_id == adm.bed_id).first()
+    if not bed or bed.status != 'AVAILABLE':
+        raise HTTPException(status_code=400, detail="Giường không tồn tại hoặc đã có người nằm")
+
+    # 2. Tạo hồ sơ nội trú
+    # (Lấy doctor từ token nếu cần, ở đây lấy từ request)
+    new_record = models.InpatientRecord(
+        patient_id=adm.patient_id,
+        treating_doctor_id=adm.treating_doctor_id or 2, # Default BS mẫu
+        initial_diagnosis=adm.initial_diagnosis,
+        status='ACTIVE'
+    )
+    db.add(new_record)
+    db.flush() # Để lấy inpatient_id ngay
+
+    # 3. Cập nhật trạng thái giường -> OCCUPIED
+    bed.status = 'OCCUPIED'
+    
+    # 4. Tạo phân bổ giường (BedAllocation)
+    room = db.query(models.Room).get(bed.room_id)
+    new_alloc = models.BedAllocation(
+        inpatient_id=new_record.inpatient_id,
+        bed_id=bed.bed_id,
+        price_per_day=room.base_price # Lưu giá tại thời điểm nhập viện
+    )
+    db.add(new_alloc)
+    
+    db.commit()
+    db.refresh(new_record)
+    
+    # Map response
+    pt = db.query(models.Patient).get(adm.patient_id)
+    return {
+        "inpatient_id": new_record.inpatient_id,
+        "patient_name": pt.full_name,
+        "bed_number": bed.bed_number,
+        "status": new_record.status,
+        "admission_date": new_record.admission_date
+    }
+
+# --- API NỘI TRÚ 3: Xuất viện (Discharge) & Tính tiền giường ---
+@app.post("/inpatients/{inpatient_id}/discharge")
+def discharge_patient(
+    inpatient_id: int,
+    db: Session = Depends(get_db)
+):
+    record = db.query(models.InpatientRecord).get(inpatient_id)
+    if not record or record.status != 'ACTIVE':
+        raise HTTPException(status_code=400, detail="Hồ sơ không hợp lệ")
+
+    # 1. Kết thúc phân bổ giường hiện tại
+    last_alloc = db.query(models.BedAllocation).filter(
+        models.BedAllocation.inpatient_id == inpatient_id,
+        models.BedAllocation.check_out_time == None
+    ).first()
+    
+    total_bed_fee = 0
+    
+    if last_alloc:
+        last_alloc.check_out_time = datetime.now()
+        
+        # Trả giường về trạng thái CLEANING (để dọn dẹp) hoặc AVAILABLE
+        bed = db.query(models.Bed).get(last_alloc.bed_id)
+        bed.status = 'AVAILABLE' 
+        
+        # Tính tiền sơ bộ (Demo logic đơn giản: số ngày * giá)
+        duration = last_alloc.check_out_time - last_alloc.check_in_time
+        days = max(1, duration.days) # Ít nhất tính 1 ngày
+        total_bed_fee = days * float(last_alloc.price_per_day)
+
+    # 2. Đóng hồ sơ
+    record.status = 'DISCHARGED'
+    record.discharge_date = datetime.now()
+    
+    db.commit()
+    
+    return {
+        "message": "Xuất viện thành công",
+        "bed_fee": total_bed_fee,
+        "days": days if last_alloc else 0
+    }

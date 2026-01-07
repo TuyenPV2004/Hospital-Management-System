@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
 from sqlalchemy import Time, Date, Boolean
+from sqlalchemy import JSON
 
 # Bảng Users
 class User(Base):
@@ -209,3 +210,72 @@ class ServiceResult(Base):
 
     request = relationship("ServiceRequest", back_populates="result")
     technician = relationship("User")
+    
+# --- MÔ HÌNH CHO QUẢN LÝ NỘI TRÚ (INPATIENT MANAGEMENT) ---
+class Department(Base):
+    __tablename__ = "Departments"
+    department_id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100))
+    location = Column(String(255))
+    rooms = relationship("Room", back_populates="department")
+
+class Room(Base):
+    __tablename__ = "Rooms"
+    room_id = Column(Integer, primary_key=True, index=True)
+    department_id = Column(Integer, ForeignKey("Departments.department_id"))
+    room_number = Column(String(20))
+    type = Column(Enum('STANDARD', 'VIP', 'ISOLATION'))
+    base_price = Column(DECIMAL(15,2))
+    
+    department = relationship("Department", back_populates="rooms")
+    beds = relationship("Bed", back_populates="room")
+
+class Bed(Base):
+    __tablename__ = "Beds"
+    bed_id = Column(Integer, primary_key=True, index=True)
+    room_id = Column(Integer, ForeignKey("Rooms.room_id"))
+    bed_number = Column(String(20))
+    status = Column(Enum('AVAILABLE', 'OCCUPIED', 'MAINTENANCE', 'CLEANING'))
+    
+    room = relationship("Room", back_populates="beds")
+
+class InpatientRecord(Base):
+    __tablename__ = "InpatientRecords"
+    inpatient_id = Column(Integer, primary_key=True, index=True)
+    patient_id = Column(Integer, ForeignKey("Patients.patient_id"))
+    treating_doctor_id = Column(Integer, ForeignKey("Users.user_id"))
+    admission_date = Column(DateTime(timezone=True), server_default=func.now())
+    discharge_date = Column(DateTime(timezone=True), nullable=True)
+    initial_diagnosis = Column(Text)
+    status = Column(Enum('ACTIVE', 'DISCHARGED', 'TRANSFERRED'), default='ACTIVE')
+    
+    patient = relationship("Patient")
+    doctor = relationship("User")
+    allocations = relationship("BedAllocation", back_populates="inpatient_record")
+    daily_orders = relationship("DailyOrder", back_populates="inpatient_record")
+
+class BedAllocation(Base):
+    __tablename__ = "BedAllocations"
+    allocation_id = Column(Integer, primary_key=True, index=True)
+    inpatient_id = Column(Integer, ForeignKey("InpatientRecords.inpatient_id"))
+    bed_id = Column(Integer, ForeignKey("Beds.bed_id"))
+    check_in_time = Column(DateTime(timezone=True), server_default=func.now())
+    check_out_time = Column(DateTime(timezone=True), nullable=True)
+    price_per_day = Column(DECIMAL(15,2))
+    
+    inpatient_record = relationship("InpatientRecord", back_populates="allocations")
+    bed = relationship("Bed")
+
+class DailyOrder(Base):
+    __tablename__ = "DailyOrders"
+    order_id = Column(Integer, primary_key=True, index=True)
+    inpatient_id = Column(Integer, ForeignKey("InpatientRecords.inpatient_id"))
+    doctor_id = Column(Integer, ForeignKey("Users.user_id"))
+    date = Column(Date)
+    progress_note = Column(Text)
+    doctor_instruction = Column(Text)
+    nurse_notes = Column(Text)
+    vitals = Column(JSON) # Lưu JSON sinh hiệu
+    
+    inpatient_record = relationship("InpatientRecord", back_populates="daily_orders")
+    doctor = relationship("User")

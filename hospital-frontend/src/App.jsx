@@ -11,6 +11,7 @@ import AdminUsers from './pages/AdminUsers';
 import ForgotPassword from './pages/ForgotPassword';
 import Booking from './pages/Booking';
 import TechnicianDashboard from './pages/TechnicianDashboard';
+import InpatientMap from './pages/InpatientMap';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/booking" element={<Booking />} />
         <Route path="/technician" element={<TechnicianDashboard />} />
+        <Route path="/inpatient-map" element={<InpatientMap />} />
       </Routes>
     </Router>
   );
