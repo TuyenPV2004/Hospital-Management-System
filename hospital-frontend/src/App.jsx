@@ -12,6 +12,8 @@ import ForgotPassword from './pages/ForgotPassword';
 import Booking from './pages/Booking';
 import TechnicianDashboard from './pages/TechnicianDashboard';
 import InpatientMap from './pages/InpatientMap';
+import InventoryImport from './pages/InventoryImport';
+import InventoryAlerts from './pages/InventoryAlerts';
 
 function App() {
   return (
@@ -29,6 +31,8 @@ function App() {
         <Route path="/booking" element={<Booking />} />
         <Route path="/technician" element={<TechnicianDashboard />} />
         <Route path="/inpatient" element={<InpatientMap />} />
+        <Route path="/inventory/import" element={<InventoryImport />} />
+        <Route path="/inventory/alerts" element={<InventoryAlerts />} />
       </Routes>
     </Router>
   );

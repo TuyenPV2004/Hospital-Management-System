@@ -208,7 +208,7 @@ def read_users_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get
     return user
 
 # --- API 3: Thêm bệnh nhân mới ---
-from typing import Optional
+from typing import List, Optional
 # dependency 'token' đảm bảo phải đăng nhập mới được thêm
 @app.post("/patients", response_model=schemas.PatientResponse)
 def create_patient(
@@ -1072,3 +1072,129 @@ def discharge_patient(
         "bed_fee": total_bed_fee,
         "days": days if last_alloc else 0
     }
+    
+
+# --- API KHO 1: CRUD Nhà cung cấp ---
+@app.get("/suppliers", response_model=List[schemas.SupplierBase]) # Sửa response model cho đúng list
+def get_suppliers(db: Session = Depends(get_db)):
+    return db.query(models.Supplier).all()
+
+# --- API KHO 2: Tạo Phiếu nhập kho (Quy trình quan trọng) ---
+@app.post("/imports", response_model=schemas.ImportReceiptResponse)
+def create_import(
+    receipt: schemas.ImportReceiptCreate,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    # 1. Tạo Header
+    new_receipt = models.ImportReceipt(
+        supplier_id=receipt.supplier_id,
+        status='DRAFT',
+        note=receipt.note,
+        total_amount=0 # Sẽ tính lại
+    )
+    db.add(new_receipt)
+    db.commit()
+    db.refresh(new_receipt)
+
+    # 2. Tạo Details & Tính tổng tiền
+    total = 0
+    for item in receipt.details:
+        detail = models.ImportDetail(
+            receipt_id=new_receipt.receipt_id,
+            item_type=item.item_type,
+            item_id=item.item_id,
+            quantity=item.quantity,
+            import_price=item.import_price,
+            batch_number=item.batch_number,
+            expiry_date=item.expiry_date
+        )
+        db.add(detail)
+        total += (item.quantity * item.import_price)
+    
+    # Update tổng tiền
+    new_receipt.total_amount = total
+    db.commit()
+    db.refresh(new_receipt)
+    return new_receipt
+
+# --- API KHO 3: Xác nhận nhập kho (Update Stock) ---
+@app.put("/imports/{receipt_id}/confirm")
+def confirm_import(
+    receipt_id: int,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    # 1. Lấy phiếu
+    receipt = db.query(models.ImportReceipt).get(receipt_id)
+    if not receipt or receipt.status != 'DRAFT':
+        raise HTTPException(status_code=400, detail="Phiếu không tồn tại hoặc đã nhập")
+
+    # 2. Duyệt qua từng dòng chi tiết để cộng kho
+    for detail in receipt.details:
+        if detail.item_type == 'MEDICINE':
+            item = db.query(models.Medicine).get(detail.item_id)
+        else:
+            item = db.query(models.MedicalSupply).get(detail.item_id)
+            
+        if item:
+            # Cộng tồn kho
+            item.stock_quantity += detail.quantity
+            # Cập nhật giá nhập mới nhất (nếu muốn)
+            # item.import_price = detail.import_price
+            
+            # Cập nhật hạn dùng (Logic đơn giản: Lấy hạn xa nhất hoặc hạn của lô mới nhất)
+            # Ở đây ta tạm update hạn của lô mới nhập để cảnh báo
+            if hasattr(item, 'expiry_date'): 
+                 item.expiry_date = detail.expiry_date
+
+    # 3. Đổi trạng thái phiếu
+    receipt.status = 'COMPLETED'
+    db.commit()
+    
+    return {"message": "Đã nhập kho thành công, tồn kho đã được cập nhật"}
+
+# --- API KHO 4: Hệ thống Cảnh báo (Alerts) ---
+@app.get("/inventory/alerts", response_model=List[schemas.InventoryAlert])
+def get_inventory_alerts(db: Session = Depends(get_db)):
+    alerts = []
+    today = date.today()
+    warning_date = today + timedelta(days=60) # Cảnh báo trước 60 ngày
+
+    # 1. Quét Thuốc (Medicines)
+    medicines = db.query(models.Medicine).all()
+    for med in medicines:
+        # Cảnh báo Tồn kho thấp
+        if med.stock_quantity <= (med.stock_quantity or 10): # Logic tạm, đúng ra phải có col min_stock_level
+             # Do DB cũ chưa có min_stock_level, bạn chạy SQL alter ở trên thì dùng:
+             # if med.stock_quantity <= getattr(med, 'min_stock_level', 10):
+             pass # Logic check ở dưới
+
+        # Check Low Stock
+        min_stock = getattr(med, 'min_stock_level', 10) # Safe get
+        if med.stock_quantity < min_stock:
+            alerts.append({
+                "id": med.medicine_id, "name": med.name, "type": "MEDICINE",
+                "stock": med.stock_quantity, "min_stock": min_stock,
+                "expiry_date": med.expiry_date, "alert_type": "LOW_STOCK"
+            })
+        
+        # Check Hết hạn
+        if med.expiry_date and med.expiry_date <= warning_date:
+             alerts.append({
+                "id": med.medicine_id, "name": med.name, "type": "MEDICINE",
+                "stock": med.stock_quantity, "min_stock": min_stock,
+                "expiry_date": med.expiry_date, "alert_type": "EXPIRY"
+            })
+
+    # 2. Quét Vật tư (MedicalSupplies)
+    supplies = db.query(models.MedicalSupply).all()
+    for sup in supplies:
+        if sup.stock_quantity < sup.min_stock_level:
+            alerts.append({
+                "id": sup.supply_id, "name": sup.name, "type": "SUPPLY",
+                "stock": sup.stock_quantity, "min_stock": sup.min_stock_level,
+                "expiry_date": None, "alert_type": "LOW_STOCK"
+            })
+
+    return alerts

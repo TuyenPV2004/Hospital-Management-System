@@ -279,3 +279,51 @@ class DailyOrder(Base):
     
     inpatient_record = relationship("InpatientRecord", back_populates="daily_orders")
     doctor = relationship("User")
+    
+# --- MÔ HÌNH CHO QUẢN LÝ KHO DƯỢC (PHARMACY INVENTORY MANAGEMENT) ---
+class Supplier(Base):
+    __tablename__ = "Suppliers"
+    supplier_id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255))
+    contact_person = Column(String(100))
+    email = Column(String(100))
+    phone = Column(String(20))
+    address = Column(Text)
+    tax_code = Column(String(50))
+
+class MedicalSupply(Base):
+    __tablename__ = "MedicalSupplies"
+    supply_id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255))
+    code = Column(String(50), unique=True)
+    category = Column(Enum('CONSUMABLE', 'EQUIPMENT'))
+    unit = Column(String(50))
+    price = Column(DECIMAL(15, 2))
+    stock_quantity = Column(Integer, default=0)
+    min_stock_level = Column(Integer, default=10)
+
+class ImportReceipt(Base):
+    __tablename__ = "ImportReceipts"
+    receipt_id = Column(Integer, primary_key=True, index=True)
+    supplier_id = Column(Integer, ForeignKey("Suppliers.supplier_id"))
+    created_by = Column(Integer, ForeignKey("Users.user_id"), nullable=True)
+    import_date = Column(DateTime(timezone=True), server_default=func.now())
+    total_amount = Column(DECIMAL(15, 2), default=0)
+    status = Column(Enum('DRAFT', 'COMPLETED', 'CANCELLED'), default='DRAFT')
+    note = Column(Text)
+
+    supplier = relationship("Supplier")
+    details = relationship("ImportDetail", back_populates="receipt")
+
+class ImportDetail(Base):
+    __tablename__ = "ImportDetails"
+    detail_id = Column(Integer, primary_key=True, index=True)
+    receipt_id = Column(Integer, ForeignKey("ImportReceipts.receipt_id"))
+    item_type = Column(Enum('MEDICINE', 'SUPPLY'))
+    item_id = Column(Integer) # Không dùng FK cứng để linh hoạt
+    quantity = Column(Integer)
+    import_price = Column(DECIMAL(15, 2))
+    batch_number = Column(String(50))
+    expiry_date = Column(Date)
+    
+    receipt = relationship("ImportReceipt", back_populates="details")

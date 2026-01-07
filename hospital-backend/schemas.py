@@ -365,4 +365,56 @@ class InpatientResponse(BaseModel):
     status: str
     admission_date: datetime
     class Config:
-        from_attributes = True             
+        from_attributes = True
+
+
+# --- KHO & VẬT TƯ ---
+class SupplierBase(BaseModel):
+    name: str
+    contact_person: Optional[str]
+    phone: Optional[str]
+    email: Optional[str]
+    address: Optional[str]
+
+class MedicalSupplyCreate(BaseModel):
+    name: str
+    code: str
+    category: str = 'CONSUMABLE'
+    unit: str
+    price: float
+    min_stock_level: int = 10
+
+# --- NHẬP KHO ---
+class ImportDetailCreate(BaseModel):
+    item_type: str # MEDICINE / SUPPLY
+    item_id: int
+    quantity: int
+    import_price: float
+    batch_number: str
+    expiry_date: date
+
+class ImportReceiptCreate(BaseModel):
+    supplier_id: int
+    note: Optional[str] = None
+    # Có thể gửi kèm danh sách details luôn nếu muốn
+    details: List[ImportDetailCreate] = []
+
+class ImportReceiptResponse(BaseModel):
+    receipt_id: int
+    supplier_id: int
+    total_amount: float
+    status: str
+    import_date: datetime
+    # supplier_name: Optional[str] # Map tên nếu cần
+    class Config:
+        from_attributes = True
+
+# Schema Cảnh báo
+class InventoryAlert(BaseModel):
+    id: int
+    name: str
+    type: str # MEDICINE / SUPPLY
+    stock: int
+    min_stock: int
+    expiry_date: Optional[date]
+    alert_type: str # EXPIRY / LOW_STOCK             
