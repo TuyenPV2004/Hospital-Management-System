@@ -269,4 +269,21 @@ class AppointmentResponse(BaseModel):
 # Schema hiển thị Slot trống (Cho Frontend vẽ Grid)
 class TimeSlot(BaseModel):
     time: str     # "08:30"
-    is_booked: bool    
+    is_booked: bool
+
+# Schema tạo lịch hẹn cho khách vãng lai (không có patient_id)    
+class AppointmentCreate(BaseModel):
+    doctor_id: int
+    appointment_date: date
+    start_time: str
+    reason: str
+    
+    # Cho phép patient_id null (nếu là khách mới)
+    patient_id: Optional[int] = None
+    
+    # Trường thông tin cho khách vãng lai
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    dob: Optional[date] = None
+    gender: Optional[str] = None
+    address: Optional[str] = None    

@@ -131,13 +131,19 @@ const Login = () => {
                     >
                         Đăng Nhập
                     </button>
-                    <div className="mt-6 text-center border-t pt-4 space-y-2">
-                        <div className="text-gray-600 text-sm">
+                    <div className="mt-6 text-center border-t pt-4 space-y-3">
+                        <div className="text-gray-600 text-sm space-y-1">
                             <p>Bạn chưa có tài khoản?</p>
                             <p>Liên hệ IT/Quản trị viên - Hotline: 0123 456 789</p>
                         </div>
-                        <Link to="/register" className="text-blue-600 font-bold hover:underline">
+                        <Link to="/register" className="text-blue-600 font-bold hover:underline block">
                             Đăng ký khám bệnh ngay
+                        </Link>
+                        <Link
+                            to="/booking"
+                            className="inline-block bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition"
+                        >
+                            Đặt lịch khám ngay (Không cần đăng nhập)
                         </Link>
                     </div>
                 </form>
