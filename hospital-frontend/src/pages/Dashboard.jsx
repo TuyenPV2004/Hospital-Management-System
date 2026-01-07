@@ -1,14 +1,14 @@
 // src/pages/Dashboard.jsx
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom'; // Thêm Link, useLocation
 import api from '../services/api';
 
 const Dashboard = () => {
     const navigate = useNavigate();
+    const location = useLocation(); // Để kiểm tra trang hiện tại
     const [user, setUser] = useState(null);
 
     useEffect(() => {
-        // Kiểm tra xem token có dùng được không bằng cách gọi API lấy thông tin user
         const fetchUser = async () => {
             try {
                 const response = await api.get('/users/me');
@@ -19,7 +19,6 @@ const Dashboard = () => {
                 navigate('/');
             }
         };
-
         fetchUser();
     }, [navigate]);
 
@@ -29,77 +28,128 @@ const Dashboard = () => {
     };
 
     return (
-        <div className="p-10">
-            <h1 className="text-3xl font-bold text-green-600">Dashboard</h1>
-            {user ? (
-                <div className="mt-4">
-                    <p>Xin chào, <strong>{user.full_name}</strong>!</p>
-                    <p>Vai trò: <span className="px-2 py-1 text-sm text-white bg-blue-500 rounded">{user.role}</span></p>
-                    
-                    {/* --- BỔ SUNG NÚT ADMIN TẠI ĐÂY --- */}
-                    {user.role === 'ADMIN' && (
-                        <div className="mt-4 p-4 bg-yellow-100 border-l-4 border-yellow-500 rounded">
-                            <h3 className="font-bold text-yellow-700">Khu vực Quản Trị Viên</h3>
-                            <button 
-                                onClick={() => navigate('/admin/users')}
-                                className="mt-2 px-4 py-2 bg-yellow-600 text-white font-bold rounded hover:bg-yellow-700"
-                            >
-                                🛠 Quản Lý Nhân Sự (Admin)
+        <div className="flex h-screen bg-gray-100">
+            {/* --- SIDEBAR (MENU TRÁI) --- */}
+            <div className="w-64 bg-white shadow-md flex-shrink-0 overflow-y-auto">
+                <div className="p-4 border-b">
+                    <h1 className="text-xl font-bold text-blue-600 flex items-center">
+                        🏥 Hospital Manager
+                    </h1>
+                </div>
+                
+                <nav className="p-4">
+                    <ul className="space-y-2">
+                        {/* 1. Tổng quan */}
+                        <li>
+                            <Link to="/dashboard" className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${location.pathname === '/dashboard' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}>
+                                <span className="text-xl">📊</span>
+                                <span className="font-bold">Tổng quan</span>
+                            </Link>
+                        </li>
+
+                        {/* 2. Đặt lịch */}
+                        <li>
+                            <Link to="/booking" className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${location.pathname === '/booking' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}>
+                                <span className="text-xl">📅</span>
+                                <span className="font-bold">Đặt lịch khám</span>
+                            </Link>
+                        </li>
+
+                        {/* 3. Các chức năng chính (Chuyển từ Button sang Menu) */}
+                        <li><div className="p-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Chức năng</div></li>
+                        
+                        <li>
+                            <Link to="/reception" className="flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-50">
+                                <span className="text-xl">desk</span>
+                                <span className="font-bold">Tiếp đón (Y Tá)</span>
+                            </Link>
+                        </li>
+                        <li>
+                            <Link to="/doctor" className="flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-50">
+                                <span className="text-xl">🩺</span>
+                                <span className="font-bold">Phòng khám (BS)</span>
+                            </Link>
+                        </li>
+                        <li>
+                            <Link to="/payment" className="flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-50">
+                                <span className="text-xl">💸</span>
+                                <span className="font-bold">Thu ngân</span>
+                            </Link>
+                        </li>
+                        <li>
+                            <Link to="/inpatient" className="flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-50">
+                                <span className="text-xl">🛏️</span>
+                                <span className="font-bold">Nội trú</span>
+                            </Link>
+                        </li>
+
+                        {/* --- 4. KHO & VẬT TƯ (BẠN YÊU CẦU THÊM) --- */}
+                        <li>
+                            <div className="p-3 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                Quản lý Kho Dược
+                            </div>
+                        </li>
+
+                        <li>
+                            <Link to="/inventory/import" className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${location.pathname === '/inventory/import' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}>
+                                <span className="text-xl">📥</span>
+                                <span className="font-bold">Nhập Kho</span>
+                            </Link>
+                        </li>
+
+                        <li>
+                            <Link to="/inventory/alerts" className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${location.pathname === '/inventory/alerts' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-50'}`}>
+                                <span className="text-xl">⚠️</span>
+                                <span className="font-bold">Cảnh báo Hạn/Tồn</span>
+                            </Link>
+                        </li>
+                        {/* --------------------------------------------- */}
+                        
+                        <li className="pt-4 border-t mt-4">
+                            <button onClick={handleLogout} className="flex items-center space-x-3 p-3 rounded-lg text-red-600 hover:bg-red-50 w-full text-left">
+                                <span className="text-xl">🚪</span>
+                                <span className="font-bold">Đăng xuất</span>
                             </button>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+
+            {/* --- MAIN CONTENT (NỘI DUNG CHÍNH) --- */}
+            <div className="flex-1 p-10 overflow-y-auto">
+                <div className="flex justify-between items-center mb-8">
+                    <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
+                    {user && (
+                        <div className="flex items-center space-x-4">
+                            <div className="text-right">
+                                <p className="font-bold text-gray-700">{user.full_name}</p>
+                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">{user.role}</span>
+                            </div>
+                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                                {user.full_name.charAt(0)}
+                            </div>
                         </div>
                     )}
-                    {/* ---------------------------------- */}
-
-                    <button 
-                        onClick={handleLogout}
-                        className="mt-6 px-4 py-2 text-white bg-red-500 rounded hover:bg-red-600"
-                    >
-                        Đăng xuất
-                    </button>
                 </div>
-            ) : (
-                <p>Đang tải thông tin...</p>
-            )}
-              <div className="mt-6 space-x-4">
-            <button 
-                onClick={() => navigate('/reception')}
-                className="px-6 py-3 bg-blue-600 text-white font-bold rounded shadow hover:bg-blue-700"
-            >
-                Khu Vực Tiếp Đón (Y Tá)
-            </button>
-            
-            <button 
-                onClick={() => navigate('/doctor')} // Thêm sự kiện navigate
-                className="px-6 py-3 bg-green-600 text-white font-bold rounded shadow hover:bg-green-700"
-            >
-                Phòng Khám (Bác Sĩ)
-            </button>
 
-            <button 
-                onClick={() => navigate('/payment')}
-                className="px-6 py-3 bg-purple-600 text-white font-bold rounded shadow hover:bg-purple-700"
-            >
-                Thu Ngân (Thanh Toán)
-            </button>
-
-            <button 
-                onClick={() => navigate('/pharmacy')} className="px-6 py-3 bg-teal-600 text-white font-bold rounded shadow hover:bg-teal-700"
-            >
-                Quản Lý Kho Dược
-            </button>
-
-            <button 
-                onClick={() => navigate('/inpatient')}
-                className="px-6 py-3 bg-orange-600 text-white font-bold rounded shadow hover:bg-orange-700"
-            >
-                Sơ Đồ Giường Bệnh (Nội Trú)
-            </button>
+                {/* Nội dung Dashboard (Widgets, Thống kê...) */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+                        <h3 className="text-gray-500 text-sm font-bold uppercase">Bệnh nhân hôm nay</h3>
+                        <p className="text-3xl font-bold text-blue-600 mt-2">124</p>
+                    </div>
+                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+                        <h3 className="text-gray-500 text-sm font-bold uppercase">Doanh thu ngày</h3>
+                        <p className="text-3xl font-bold text-green-600 mt-2">15.2M</p>
+                    </div>
+                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+                        <h3 className="text-gray-500 text-sm font-bold uppercase">Lịch hẹn mới</h3>
+                        <p className="text-3xl font-bold text-purple-600 mt-2">8</p>
+                    </div>
+                </div>
+            </div>
         </div>
-        </div>      
     );
 };
 
 export default Dashboard;
-
-
-      
