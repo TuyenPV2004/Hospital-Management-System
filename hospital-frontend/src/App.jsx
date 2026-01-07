@@ -9,6 +9,7 @@ import Pharmacy from './pages/Pharmacy';
 import Register from './pages/Register';
 import AdminUsers from './pages/AdminUsers';
 import ForgotPassword from './pages/ForgotPassword';
+import Booking from './pages/Booking';
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/admin/users" element={<AdminUsers />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/booking" element={<Booking />} />
       </Routes>
     </Router>
   );

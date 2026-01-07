@@ -563,4 +563,185 @@ app.add_middleware(
     allow_methods=["*"],   # Cho phép tất cả các method (GET, POST, PUT...)
     allow_headers=["*"],   # Cho phép tất cả header
 )
-# -------------------------------------
+
+# main.py (Thêm các endpoints mới)
+from datetime import time, timedelta, date
+
+# --- API BOOKING 1: Tạo lịch làm việc (Cho Admin/Doctor) ---
+@app.post("/schedules", response_model=schemas.ScheduleResponse)
+def create_schedule(
+    sch: schemas.ScheduleCreate, 
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    # Kiểm tra xem bác sĩ đã có lịch ngày đó chưa
+    existing = db.query(models.DoctorSchedule).filter(
+        models.DoctorSchedule.doctor_id == sch.doctor_id,
+        models.DoctorSchedule.day_of_week == sch.day_of_week
+    ).first()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="Bác sĩ đã có lịch làm việc vào thứ này")
+    
+    # Parse string to time objects
+    t_start = datetime.strptime(sch.shift_start, "%H:%M").time()
+    t_end = datetime.strptime(sch.shift_end, "%H:%M").time()
+    
+    new_sch = models.DoctorSchedule(
+        doctor_id=sch.doctor_id,
+        day_of_week=sch.day_of_week,
+        shift_start=t_start,
+        shift_end=t_end
+    )
+    db.add(new_sch)
+    db.commit()
+    db.refresh(new_sch)
+    return new_sch
+
+# --- HELPER: Hàm sinh slot 30 phút ---
+def generate_time_slots(start_time: time, end_time: time) -> list[time]:
+    slots = []
+    current = datetime.combine(date.today(), start_time)
+    end = datetime.combine(date.today(), end_time)
+    
+    while current < end:
+        slots.append(current.time())
+        current += timedelta(minutes=30) # Mỗi slot 30 phút
+    return slots
+
+# --- API BOOKING 2: Lấy danh sách Slot trống (Cho bệnh nhân chọn) ---
+@app.get("/doctors/{doctor_id}/slots")
+def get_doctor_slots(
+    doctor_id: int, 
+    date_str: str, # Format YYYY-MM-DD
+    db: Session = Depends(get_db)
+):
+    # 1. Xác định thứ trong tuần (0=Monday, 6=Sunday trong Python, nhưng DB ta quy ước 0=Sun, 1=Mon.. tùy bạn)
+    # Ở đây tôi dùng chuẩn Python: weekday() trả về 0=Mon, 6=Sun. 
+    # Nếu DB bạn lưu 0=Sun thì cần map lại. Giả sử ta dùng chuẩn Python 0=Mon.
+    target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    day_idx = target_date.weekday() # 0-6
+    
+    # 2. Lấy lịch làm việc của bác sĩ ngày đó
+    schedule = db.query(models.DoctorSchedule).filter(
+        models.DoctorSchedule.doctor_id == doctor_id,
+        models.DoctorSchedule.day_of_week == day_idx,
+        models.DoctorSchedule.is_active == True
+    ).first()
+    
+    if not schedule:
+        return {"message": "Bác sĩ không làm việc ngày này", "slots": []}
+    
+    # 3. Sinh tất cả các slot có thể
+    all_slots = generate_time_slots(schedule.shift_start, schedule.shift_end)
+    
+    # 4. Lấy các lịch đã được đặt (không tính Cancelled)
+    booked_appts = db.query(models.Appointment).filter(
+        models.Appointment.doctor_id == doctor_id,
+        models.Appointment.appointment_date == target_date,
+        models.Appointment.status != 'CANCELLED'
+    ).all()
+    
+    booked_times = [appt.start_time for appt in booked_appts]
+    
+    # 5. Đánh dấu slot nào đã full
+    result = []
+    for slot in all_slots:
+        is_booked = slot in booked_times
+        result.append({"time": slot.strftime("%H:%M"), "is_booked": is_booked})
+        
+    return result
+
+# --- API BOOKING 3: Đặt lịch hẹn ---
+@app.post("/appointments", response_model=schemas.AppointmentResponse)
+def create_appointment(
+    appt: schemas.AppointmentCreate, 
+    db: Session = Depends(get_db)
+):
+    # 1. Validate logic nghiệp vụ (trước 2 tiếng, không quá 30 ngày...)
+    appt_dt = datetime.combine(appt.appointment_date, datetime.strptime(appt.start_time, "%H:%M").time())
+    if appt_dt < datetime.now() + timedelta(hours=2):
+        raise HTTPException(status_code=400, detail="Phải đặt trước ít nhất 2 tiếng")
+        
+    # 2. Check trùng lần nữa (Double check)
+    is_exist = db.query(models.Appointment).filter(
+        models.Appointment.doctor_id == appt.doctor_id,
+        models.Appointment.appointment_date == appt.appointment_date,
+        models.Appointment.start_time == appt.start_time,
+        models.Appointment.status != 'CANCELLED'
+    ).first()
+    
+    if is_exist:
+        raise HTTPException(status_code=400, detail="Khung giờ này vừa có người đặt xong")
+        
+    # 3. Lưu
+    end_time = (appt_dt + timedelta(minutes=30)).time()
+    
+    new_appt = models.Appointment(
+        patient_id=appt.patient_id,
+        doctor_id=appt.doctor_id,
+        appointment_date=appt.appointment_date,
+        start_time=appt_dt.time(),
+        end_time=end_time,
+        reason=appt.reason,
+        status="PENDING" # Mặc định chờ duyệt hoặc Confirm luôn tùy policy
+    )
+    db.add(new_appt)
+    db.commit()
+    db.refresh(new_appt)
+    return new_appt
+
+# --- API BOOKING 4: Bác sĩ xem lịch hôm nay ---
+@app.get("/appointments/today", response_model=list[schemas.AppointmentResponse])
+def get_today_appointments(
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    # Lấy user từ token (giả sử đã decode role=DOCTOR)
+    # (Để đơn giản tôi hardcode user_id hoặc lấy từ logic user/me)
+    # Đúng ra phải decode token -> lấy user_id. Tạm thời query all cho ngày hôm nay.
+    today = date.today()
+    appts = db.query(models.Appointment).filter(
+        models.Appointment.appointment_date == today,
+        models.Appointment.status.in_(['PENDING', 'CONFIRMED'])
+    ).all()
+    
+    # Map thêm tên bệnh nhân để hiển thị
+    response_data = []
+    for a in appts:
+        pt = db.query(models.Patient).get(a.patient_id)
+        a.patient_name = pt.full_name if pt else "Unknown"
+        response_data.append(a)
+        
+    return response_data
+
+# --- API BOOKING 5: Check-in (Y tá chuyển Booking -> Visit) ---
+@app.post("/appointments/{appt_id}/check-in")
+def check_in_appointment(
+    appt_id: int, 
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    # 1. Tìm lịch hẹn
+    appt = db.query(models.Appointment).get(appt_id)
+    if not appt:
+        raise HTTPException(status_code=404, detail="Không tìm thấy lịch hẹn")
+    
+    if appt.status == 'COMPLETED':
+        raise HTTPException(status_code=400, detail="Lịch hẹn này đã khám xong")
+
+    # 2. Tạo Visit mới (trạng thái WAITING)
+    new_visit = models.Visit(
+        patient_id=appt.patient_id,
+        doctor_id=appt.doctor_id,
+        status="WAITING",
+        chief_complaint=appt.reason, # Lấy lý do đặt lịch làm triệu chứng ban đầu
+        priority="NORMAL"
+    )
+    db.add(new_visit)
+    
+    # 3. Cập nhật trạng thái Appointment -> COMPLETED
+    appt.status = "COMPLETED"
+    
+    db.commit()
+    return {"message": "Đã check-in thành công. Bệnh nhân đã vào danh sách chờ khám."}

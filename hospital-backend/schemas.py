@@ -2,8 +2,8 @@
 import datetime
 from pydantic import BaseModel
 from typing import Optional
-from datetime import date, datetime
-
+from datetime import date, datetime, time
+from typing import List
 
 # Schema dùng cho form Đăng ký (Bệnh nhân)
 class UserRegister(BaseModel):
@@ -223,3 +223,50 @@ class TopMedicine(BaseModel):
     name: str
     sold_quantity: int
     stock_quantity: int    
+    
+
+# --- SCHEMAS CHO LỊCH LÀM VIỆC (SCHEDULE) ---
+class ScheduleCreate(BaseModel):
+    doctor_id: int
+    day_of_week: int # 0-6
+    shift_start: str # Định dạng "HH:MM:SS" hoặc "HH:MM"
+    shift_end: str
+
+class ScheduleResponse(BaseModel):
+    schedule_id: int
+    doctor_id: int
+    day_of_week: int
+    shift_start: time
+    shift_end: time
+    is_active: bool
+    class Config:
+        from_attributes = True
+
+# --- SCHEMAS CHO LỊCH HẸN (APPOINTMENT) ---
+class AppointmentCreate(BaseModel):
+    patient_id: int
+    doctor_id: int
+    appointment_date: date
+    start_time: str # "09:30"
+    reason: str
+
+class AppointmentResponse(BaseModel):
+    appointment_id: int
+    patient_id: int
+    doctor_id: int
+    appointment_date: date
+    start_time: time
+    end_time: time
+    status: str
+    reason: Optional[str]
+    # Kèm thêm thông tin bác sĩ/bệnh nhân để hiển thị
+    doctor_name: Optional[str] = None 
+    patient_name: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+# Schema hiển thị Slot trống (Cho Frontend vẽ Grid)
+class TimeSlot(BaseModel):
+    time: str     # "08:30"
+    is_booked: bool    

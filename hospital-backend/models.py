@@ -3,6 +3,7 @@ from sqlalchemy import Column, Integer, String, Enum, ForeignKey, DateTime, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
+from sqlalchemy import Time, Date, Boolean
 
 # Bảng Users
 class User(Base):
@@ -130,3 +131,41 @@ class Invoice(Base):
     
     # Quan hệ
     visit = relationship("Visit")
+    
+# 1. Bảng Lịch làm việc của Bác sĩ
+class DoctorSchedule(Base):
+    __tablename__ = "DoctorSchedules"
+
+    schedule_id = Column(Integer, primary_key=True, index=True)
+    doctor_id = Column(Integer, ForeignKey("Users.user_id"), nullable=False)
+    # 0: CN, 1: T2, ..., 6: T7
+    day_of_week = Column(Integer, nullable=False) 
+    shift_start = Column(Time, nullable=False) # VD: 08:00
+    shift_end = Column(Time, nullable=False)   # VD: 17:00
+    is_active = Column(Boolean, default=True)
+
+    # Quan hệ
+    doctor = relationship("User")
+
+# 2. Bảng Lịch hẹn (Booking)
+class Appointment(Base):
+    __tablename__ = "Appointments"
+
+    appointment_id = Column(Integer, primary_key=True, index=True)
+    # Liên kết với hồ sơ bệnh án (để sau này convert sang Visit)
+    patient_id = Column(Integer, ForeignKey("Patients.patient_id"), nullable=False)
+    doctor_id = Column(Integer, ForeignKey("Users.user_id"), nullable=False)
+    
+    appointment_date = Column(Date, nullable=False)
+    start_time = Column(Time, nullable=False) # VD: 09:30
+    end_time = Column(Time, nullable=False)   # VD: 10:00 (thường +30p)
+    
+    reason = Column(Text)
+    # Trạng thái: PENDING (Chờ), CONFIRMED (Đã xác nhận), CANCELLED, COMPLETED (Đã khám), NO_SHOW (Bùng kèo)
+    status = Column(Enum('PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW'), default='PENDING')
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Quan hệ
+    patient = relationship("Patient")
+    doctor = relationship("User")
