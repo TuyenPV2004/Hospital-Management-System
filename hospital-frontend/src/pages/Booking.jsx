@@ -1,19 +1,42 @@
 // src/pages/Booking.jsx
 import { useState, useEffect } from 'react';
 import api from '../services/api';
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
 const Booking = () => {
     const navigate = useNavigate();
     const [doctors, setDoctors] = useState([]);
     const [selectedDoctor, setSelectedDoctor] = useState(null);
-    const [selectedDate, setSelectedDate] = useState(new Date());
-    const [slots, setSlots] = useState([]);
-    const [selectedSlot, setSelectedSlot] = useState(null);
+    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedTime, setSelectedTime] = useState('');
     const [reason, setReason] = useState('');
+
+    // Danh sách các slot giờ cố định
+    const timeSlots = [
+        "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
+        "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"
+    ];
+
+    // Hàm kiểm tra xem slot có hợp lệ không (ít nhất 2 giờ từ bây giờ)
+    const isSlotValid = (slotTime) => {
+        const now = new Date();
+        const selected = new Date(selectedDate);
+        
+        // Tạo đối tượng Date cho slot đang xét
+        const [hours, minutes] = slotTime.split(':').map(Number);
+        selected.setHours(hours, minutes, 0, 0);
+
+        // Tạo mốc thời gian giới hạn (Hiện tại + 2 tiếng)
+        const limitTime = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+
+        // Nếu ngày chọn là quá khứ -> Sai
+        if (new Date(selectedDate).setHours(0,0,0,0) < new Date().setHours(0,0,0,0)) {
+            return false;
+        }
+
+        // Nếu slot nhỏ hơn giới hạn -> Sai
+        return selected > limitTime;
+    };
 
     // State cho thông tin khách
     const [isGuest, setIsGuest] = useState(true); // Mặc định là khách vãng lai
@@ -30,23 +53,14 @@ const Booking = () => {
         api.get('/users/doctors').then(res => setDoctors(res.data));
     }, []);
 
-    useEffect(() => {
-        if (selectedDoctor && selectedDate) {
-            const dateStr = format(selectedDate, 'yyyy-MM-dd');
-            api.get(`/doctors/${selectedDoctor}/slots?date_str=${dateStr}`)
-               .then(res => setSlots(res.data || []))
-               .catch(() => setSlots([]));
-        }
-    }, [selectedDoctor, selectedDate]);
-
     const handleBooking = async () => {
-        if (!selectedSlot || !selectedDoctor) return alert("Vui lòng chọn bác sĩ và giờ khám");
+        if (!selectedTime || !selectedDoctor) return alert("Vui lòng chọn bác sĩ và giờ khám");
         
         // Payload gửi lên server
         const payload = {
             doctor_id: selectedDoctor,
-            appointment_date: format(selectedDate, 'yyyy-MM-dd'),
-            start_time: selectedSlot,
+            appointment_date: selectedDate,
+            start_time: selectedTime,
             reason: reason,
             // Nếu là Guest thì gửi info, nếu là Cũ thì gửi ID
             patient_id: isGuest ? null : patientId,
@@ -91,32 +105,40 @@ const Booking = () => {
 
                         <div className="mb-4">
                             <label className="block text-sm font-medium mb-1">Ngày mong muốn</label>
-                            <DatePicker 
-                                selected={selectedDate} 
-                                onChange={setSelectedDate} 
-                                dateFormat="dd/MM/yyyy"
-                                minDate={new Date()}
+                            <input 
+                                type="date" 
                                 className="w-full p-2 border rounded focus:ring-2 ring-blue-200"
+                                value={selectedDate}
+                                min={new Date().toISOString().split('T')[0]}
+                                onChange={e => setSelectedDate(e.target.value)}
                             />
                         </div>
 
                         <div className="mb-4">
                             <label className="block text-sm font-medium mb-1">Giờ khám</label>
-                            <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto">
-                                {slots.length === 0 ? <span className="text-gray-400 text-sm col-span-3 text-center py-2">Chưa chọn bác sĩ hoặc kín lịch</span> :
-                                    slots.map((slot, idx) => (
-                                        <button key={idx} disabled={slot.is_booked}
-                                            onClick={() => setSelectedSlot(slot.time)}
-                                            className={`py-1 px-2 text-sm rounded border ${
-                                                slot.is_booked ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
-                                                selectedSlot === slot.time ? 'bg-blue-600 text-white' : 'hover:bg-blue-50 text-blue-700 border-blue-200'
+                            <div className="grid grid-cols-4 gap-2 max-h-60 overflow-y-auto">
+                                {timeSlots.map((slot) => {
+                                    const isValid = isSlotValid(slot);
+                                    return (
+                                        <button
+                                            key={slot}
+                                            type="button"
+                                            disabled={!isValid}
+                                            onClick={() => setSelectedTime(slot)}
+                                            className={`py-2 px-1 rounded border text-sm font-semibold transition-all ${
+                                                !isValid 
+                                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                                                    : selectedTime === slot 
+                                                        ? 'bg-blue-600 text-white shadow-lg transform scale-105' 
+                                                        : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
                                             }`}
                                         >
-                                            {slot.time}
+                                            {slot}
                                         </button>
-                                    ))
-                                }
+                                    );
+                                })}
                             </div>
+                            {!selectedTime && <p className="text-red-500 text-sm mt-2">Vui lòng chọn giờ khám hợp lệ (*)</p>}
                         </div>
                     </div>
 

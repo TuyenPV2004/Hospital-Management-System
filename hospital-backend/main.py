@@ -1,5 +1,5 @@
 # main.py
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date, time
 from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -746,63 +746,59 @@ def check_in_appointment(
     db.commit()
     return {"message": "Đã check-in thành công. Bệnh nhân đã vào danh sách chờ khám."}
 
-# --- API BOOKING 6 (NÂNG CẤP): Đặt lịch hẹn với Bệnh nhân mới hoặc Vãng lai ---
 @app.post("/appointments", response_model=schemas.AppointmentResponse)
 def create_appointment(
-    appt: schemas.AppointmentCreate, 
-    db: Session = Depends(get_db)
+    appt: schemas.AppointmentCreate,
+    db: Session = Depends(get_db),
+    # token: str = Depends(oauth2_scheme) # Bỏ comment nếu muốn bắt buộc đăng nhập
 ):
-    # --- LOGIC MỚI: Xử lý Bệnh nhân ---
-    pid = appt.patient_id
-    
-    # Nếu không có ID bệnh nhân -> Đây là khách mới hoặc khách vãng lai
-    if not pid:
-        if not appt.full_name or not appt.phone:
-            raise HTTPException(status_code=400, detail="Khách mới vui lòng nhập Tên và SĐT")
-            
-        # Kiểm tra xem SĐT này đã có trong hệ thống chưa
-        existing_patient = db.query(models.Patient).filter(models.Patient.phone == appt.phone).first()
-        
-        if existing_patient:
-            pid = existing_patient.patient_id # Dùng lại hồ sơ cũ
+    # 1. Kết hợp Ngày và Giờ hẹn thành một đối tượng datetime hoàn chỉnh
+    # appt.start_time đang là chuỗi "HH:MM", cần chuyển về time object nếu chưa convert
+    try:
+        # Nếu schema đã validate ra time object thì dùng luôn, nếu là string thì parse
+        if isinstance(appt.start_time, str):
+            t = datetime.strptime(appt.start_time, "%H:%M").time()
         else:
-            # Tạo hồ sơ bệnh nhân mới
-            new_patient = models.Patient(
-                full_name=appt.full_name,
-                phone=appt.phone,
-                dob=appt.dob if appt.dob else date(2000, 1, 1), # Default nếu ko nhập
-                gender=appt.gender if appt.gender else "Khac",
-                address=appt.address
-            )
-            db.add(new_patient)
-            db.commit()
-            db.refresh(new_patient)
-            pid = new_patient.patient_id
+            t = appt.start_time
+            
+        appointment_datetime = datetime.combine(appt.appointment_date, t)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Định dạng thời gian không hợp lệ")
 
-    # --- LOGIC CŨ: Kiểm tra giờ & Lưu lịch ---
-    appt_dt = datetime.combine(appt.appointment_date, datetime.strptime(appt.start_time, "%H:%M").time())
-    
-    # Validate thời gian (tạm bỏ qua check 2 tiếng để test cho dễ, hoặc giữ lại tùy bạn)
-    # if appt_dt < datetime.now() + timedelta(hours=2): ...
+    # 2. Lấy thời gian hiện tại
+    now = datetime.now()
 
-    # Check trùng lịch
-    is_exist = db.query(models.Appointment).filter(
+    # 3. KIỂM TRA QUY TẮC 2 TIẾNG
+    # Logic: Thời gian hẹn phải lớn hơn (Hiện tại + 2 giờ)
+    min_allowed_time = now + timedelta(hours=2)
+
+    if appointment_datetime < min_allowed_time:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Vui lòng đặt lịch trước ít nhất 2 tiếng. Thời gian sớm nhất có thể đặt là: {min_allowed_time.strftime('%H:%M %d/%m/%Y')}"
+        )
+
+    # 4. Kiểm tra trùng lịch của Bác sĩ
+    # Tìm xem bác sĩ đó, vào ngày đó, giờ đó có ai đặt chưa (trừ những lịch đã hủy)
+    conflict = db.query(models.Appointment).filter(
         models.Appointment.doctor_id == appt.doctor_id,
         models.Appointment.appointment_date == appt.appointment_date,
-        models.Appointment.start_time == appt.start_time,
-        models.Appointment.status != 'CANCELLED'
+        models.Appointment.start_time == t, # So sánh giờ
+        models.Appointment.status != "CANCELLED"
     ).first()
-    
-    if is_exist:
-        raise HTTPException(status_code=400, detail="Khung giờ này đã có người đặt")
-        
-    end_time = (appt_dt + timedelta(minutes=30)).time()
-    
+
+    if conflict:
+        raise HTTPException(status_code=400, detail="Bác sĩ đã có lịch hẹn vào khung giờ này")
+
+    # 5. Lưu vào DB
+    # Tính giờ kết thúc (mặc định +30 phút)
+    end_time = (datetime.combine(date.min, t) + timedelta(minutes=30)).time()
+
     new_appt = models.Appointment(
-        patient_id=pid, # Sử dụng ID vừa xác định ở trên
+        patient_id=appt.patient_id,
         doctor_id=appt.doctor_id,
         appointment_date=appt.appointment_date,
-        start_time=appt_dt.time(),
+        start_time=t,
         end_time=end_time,
         reason=appt.reason,
         status="PENDING"
@@ -810,11 +806,5 @@ def create_appointment(
     db.add(new_appt)
     db.commit()
     db.refresh(new_appt)
-    
-    # Map tên để trả về đẹp
-    pt = db.query(models.Patient).get(pid)
-    doc = db.query(models.User).get(appt.doctor_id)
-    new_appt.patient_name = pt.full_name
-    new_appt.doctor_name = doc.full_name
     
     return new_appt
