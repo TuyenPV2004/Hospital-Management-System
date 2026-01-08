@@ -24,20 +24,29 @@ const AdminReport = () => {
     }, [activeTab]); // Chỉ reload khi đổi tab, người dùng phải bấm nút "Xem" nếu đổi ngày
 
     const loadData = async () => {
+        console.log('loadData called with activeTab:', activeTab);
         setLoading(true);
         setError(null);
         try {
             if (activeTab === 'doctors') {
+                console.log('Fetching doctor performance report');
                 const res = await getDoctorPerformanceReport(fromDate, toDate);
+                console.log('Doctor data:', res);
                 setData(Array.isArray(res) ? res : []);
             } else if (activeTab === 'services') {
+                console.log('Fetching service usage report');
                 const res = await getServiceUsageReport(fromDate, toDate);
+                console.log('Services data:', res);
                 setData(Array.isArray(res) ? res : []);
             } else if (activeTab === 'census') {
+                console.log('Fetching census report');
                 const res = await getInpatientCensusReport();
+                console.log('Census data:', res);
                 setCensusData(Array.isArray(res) ? res : []);
             } else if (activeTab === 'inpatients_cost') {
+                console.log('Fetching inpatient costs report');
                 const res = await getInpatientCostReport(fromDate, toDate);
+                console.log('Inpatient costs data:', res);
                 setData(Array.isArray(res) ? res : []);
             }
         } catch (error) {
@@ -183,18 +192,21 @@ const AdminReport = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {data.map((row, idx) => (
-                                            <tr key={idx} className="border-b">
-                                                <td className="p-3 font-medium">{row.service_name}</td>
-                                                <td className="p-3">
-                                                    <span className={`px-2 py-1 text-xs rounded ${row.category === 'LAB' ? 'bg-purple-100 text-purple-800' : 'bg-orange-100 text-orange-800'}`}>
-                                                        {row.category}
-                                                    </span>
-                                                </td>
-                                                <td className="p-3 text-right">{row.usage_count}</td>
-                                                <td className="p-3 text-right font-bold text-green-600">{row.total_revenue.toLocaleString()} đ</td>
-                                            </tr>
-                                        ))}
+                                        {data.map((row, idx) => {
+                                            console.log('Rendering service row:', row);
+                                            return (
+                                                <tr key={idx} className="border-b">
+                                                    <td className="p-3 font-medium">{row?.service_name || 'N/A'}</td>
+                                                    <td className="p-3">
+                                                        <span className={`px-2 py-1 text-xs rounded ${row?.category === 'LAB' ? 'bg-purple-100 text-purple-800' : 'bg-orange-100 text-orange-800'}`}>
+                                                            {row?.category || 'N/A'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-3 text-right">{row?.usage_count || 0}</td>
+                                                    <td className="p-3 text-right font-bold text-green-600">{(row?.total_revenue || 0).toLocaleString()} đ</td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             )
@@ -249,21 +261,24 @@ const AdminReport = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {data.map((row, idx) => (
-                                            <tr key={idx} className="border-b hover:bg-gray-50">
-                                                <td className="p-3 font-medium">
-                                                    {row.patient_name}
-                                                    <div className="text-xs text-gray-500">IP-{row.inpatient_id}</div>
-                                                </td>
-                                                <td className="p-3 text-center">
-                                                    {row.admission_date} <br/> ➝ {row.discharge_date}
-                                                </td>
-                                                <td className="p-3 text-right">{row.bed_fee.toLocaleString()}</td>
-                                                <td className="p-3 text-right">{row.medicine_fee.toLocaleString()}</td>
-                                                <td className="p-3 text-right">{row.service_fee.toLocaleString()}</td>
-                                                <td className="p-3 text-right font-bold text-red-600">{row.total_cost.toLocaleString()} đ</td>
-                                            </tr>
-                                        ))}
+                                        {data.map((row, idx) => {
+                                            console.log('Rendering inpatient row:', row);
+                                            return (
+                                                <tr key={idx} className="border-b hover:bg-gray-50">
+                                                    <td className="p-3 font-medium">
+                                                        {row?.patient_name || 'N/A'}
+                                                        <div className="text-xs text-gray-500">IP-{row?.inpatient_id || 'N/A'}</div>
+                                                    </td>
+                                                    <td className="p-3 text-center">
+                                                        {row?.admission_date || 'N/A'} <br/> ➝ {row?.discharge_date || 'N/A'}
+                                                    </td>
+                                                    <td className="p-3 text-right">{(row?.bed_fee || 0).toLocaleString()}</td>
+                                                    <td className="p-3 text-right">{(row?.medicine_fee || 0).toLocaleString()}</td>
+                                                    <td className="p-3 text-right">{(row?.service_fee || 0).toLocaleString()}</td>
+                                                    <td className="p-3 text-right font-bold text-red-600">{(row?.total_cost || 0).toLocaleString()} đ</td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             )
