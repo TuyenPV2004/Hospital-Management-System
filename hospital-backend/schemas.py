@@ -355,12 +355,15 @@ class BedMapResponse(BaseModel):
 class AdmissionCreate(BaseModel):
     patient_id: int
     bed_id: int
-    initial_diagnosis: str
-    treating_doctor_id: Optional[int] = None
+    doctor_id: int  # Đổi từ treating_doctor_id
+    admission_reason: str
+    diagnosis: str
 
 class InpatientResponse(BaseModel):
     inpatient_id: int
+    patient_id: int
     patient_name: str
+    bed_id: int
     bed_number: Optional[str]
     status: str
     admission_date: datetime

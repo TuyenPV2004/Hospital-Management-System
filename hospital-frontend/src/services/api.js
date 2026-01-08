@@ -94,6 +94,13 @@ export const getServiceReport = async (resultId) => {
 
 // --- MODULE NỘI TRÚ (INPATIENT) ---
 
+// 0. Tạo hồ sơ nội trú mới
+export const createInpatient = async (data) => {
+    // data: { patient_id, bed_id, doctor_id, admission_reason, diagnosis }
+    const response = await api.post('/inpatients', data);
+    return response.data;
+};
+
 // 1. Lấy danh sách bệnh nhân nội trú
 export const getInpatients = async (filters = {}) => {
     // filters: { status: 'ACTIVE', department_id: 1 }

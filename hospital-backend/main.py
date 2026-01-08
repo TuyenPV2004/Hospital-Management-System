@@ -1865,13 +1865,98 @@ def get_inpatients(
         ).join(models.Bed).first()
         
         bed_num = current_alloc.bed.bed_number if current_alloc else "Chờ xếp giường"
+        bed_id_val = current_alloc.bed_id if current_alloc else None
         
-        item = schemas.InpatientResponse.from_orm(r)
-        item.patient_name = r.patient.full_name
-        item.bed_number = bed_num
+        # Tạo dict thay vì dùng from_orm
+        item = schemas.InpatientResponse(
+            inpatient_id=r.inpatient_id,
+            patient_id=r.patient_id,
+            patient_name=r.patient.full_name,
+            bed_id=bed_id_val,
+            bed_number=bed_num,
+            status=r.status,
+            admission_date=r.admission_date
+        )
         response.append(item)
         
     return response
+
+# ====== ENDPOINT: Lấy danh sách bác sĩ ======
+@app.get("/doctors")
+def get_doctors(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.get_current_user)
+):
+    """Lấy danh sách tất cả bác sĩ trong hệ thống"""
+    doctors = db.query(models.User).filter(models.User.role == 'DOCTOR').all()
+    return doctors
+
+# ====== ENDPOINT: Tạo hồ sơ nội trú mới ======
+@app.post("/inpatients")
+def create_inpatient(
+    data: schemas.AdmissionCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN", "DOCTOR", "NURSE"]))
+):
+    """
+    Tạo hồ sơ nội trú mới cho bệnh nhân
+    - patient_id: ID bệnh nhân
+    - bed_id: ID giường
+    - admission_reason: Lý do nhập viện
+    - diagnosis: Chẩn đoán ban đầu
+    - doctor_id: ID bác sĩ điều trị
+    """
+    # Kiểm tra bệnh nhân tồn tại
+    patient = db.query(models.Patient).get(data.patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Bệnh nhân không tồn tại")
+    
+    # Kiểm tra giường có available không và lấy thông tin room để có giá
+    bed = db.query(models.Bed).options(
+        joinedload(models.Bed.room)
+    ).filter(models.Bed.bed_id == data.bed_id).first()
+    if not bed:
+        raise HTTPException(status_code=404, detail="Giường không tồn tại")
+    if bed.status != 'AVAILABLE':
+        raise HTTPException(status_code=400, detail=f"Giường {bed.bed_number} đã có người nằm")
+    
+    # Lấy giá phòng từ room
+    if not bed.room or bed.room.base_price is None:
+        raise HTTPException(status_code=400, detail="Không tìm thấy thông tin giá phòng")
+    
+    # Tạo InpatientRecord
+    new_record = models.InpatientRecord(
+        patient_id=data.patient_id,
+        treating_doctor_id=data.doctor_id,
+        admission_date=datetime.now(),
+        initial_diagnosis=f"{data.admission_reason}. Chẩn đoán: {data.diagnosis}",  # Combine vào initial_diagnosis
+        status='ACTIVE'
+    )
+    db.add(new_record)
+    db.flush()  # Để lấy inpatient_id
+    
+    # Tạo BedAllocation với giá phòng
+    allocation = models.BedAllocation(
+        inpatient_id=new_record.inpatient_id,
+        bed_id=data.bed_id,
+        check_in_time=datetime.now(),
+        check_out_time=None,
+        price_per_day=bed.room.base_price  # Lấy giá từ room
+    )
+    db.add(allocation)
+    
+    # Update bed status
+    bed.status = 'OCCUPIED'
+    
+    db.commit()
+    db.refresh(new_record)
+    
+    return {
+        "message": "Tạo hồ sơ nội trú thành công",
+        "inpatient_id": new_record.inpatient_id,
+        "patient_name": patient.full_name,
+        "bed_number": bed.bed_number
+    }
 
 # 2. Chi tiết hồ sơ nội trú (Daily Orders + Bed History)
 @app.get("/inpatients/{inpatient_id}", response_model=schemas.InpatientDetailResponse)
