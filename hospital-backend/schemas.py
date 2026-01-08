@@ -507,3 +507,29 @@ class VisitHistoryDetail(BaseModel):
 # Schema trả về cho API Get Detail Patient
 class PatientDetailResponse(PatientResponse):
     pass # Tạm thời giống PatientResponse, có thể mở rộng sau
+
+# --- BỔ SUNG VÀO schemas.py ---
+
+# 1. Schemas cho Lịch làm việc (Schedule)
+class ScheduleUpdate(BaseModel):
+    shift_start: Optional[str] = None
+    shift_end: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class DoctorScheduleFullResponse(ScheduleResponse):
+    doctor_name: str # Thêm tên bác sĩ để hiển thị cho Admin
+    specialization: Optional[str] = None
+
+# 2. Schemas cho Lịch hẹn (Appointment)
+class AppointmentUpdate(BaseModel):
+    appointment_date: Optional[date] = None
+    start_time: Optional[str] = None # Định dạng "HH:MM"
+    reason: Optional[str] = None
+    status: Optional[str] = None
+
+class AppointmentDetailResponse(AppointmentResponse):
+    # Kế thừa từ AppointmentResponse đã có các field cơ bản
+    # Bổ sung thông tin chi tiết user
+    doctor_full_name: Optional[str] = None
+    patient_full_name: Optional[str] = None
+    patient_phone: Optional[str] = None

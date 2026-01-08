@@ -10,6 +10,7 @@ from pydantic import EmailStr
 import random
 import string
 from sqlalchemy.orm import joinedload 
+from sqlalchemy import or_, and_
 
 app = FastAPI()
 FIXED_EXAM_FEE = 50000.0 # Phí khám cố định (VNĐ)
@@ -1433,3 +1434,236 @@ def get_patient_history_detail(
         })
 
     return result
+
+# --- MAIN.PY: MODULE QUẢN LÝ LỊCH LÀM VIỆC ---
+
+# 1. Lấy danh sách toàn bộ lịch (Admin)
+@app.get("/schedules", response_model=list[schemas.DoctorScheduleFullResponse])
+def get_all_schedules(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN"]))
+):
+    # Join bảng User để lấy tên bác sĩ
+    results = db.query(models.DoctorSchedule).options(
+        joinedload(models.DoctorSchedule.doctor)
+    ).all()
+    
+    # Map dữ liệu thủ công nếu tên field không khớp 1-1
+    response = []
+    for item in results:
+        # Pydantic sẽ tự map các field trùng tên, ta chỉ map thêm field doctor_name
+        item_dict = schemas.DoctorScheduleFullResponse.from_orm(item)
+        item_dict.doctor_name = item.doctor.full_name if item.doctor else "Unknown"
+        item_dict.specialization = getattr(item.doctor, 'specialization', None)
+        response.append(item_dict)
+    return response
+
+# 2. Lấy lịch của một bác sĩ cụ thể
+@app.get("/doctors/{doctor_id}/schedules", response_model=list[schemas.ScheduleResponse])
+def get_doctor_schedules(
+    doctor_id: int,
+    db: Session = Depends(get_db),
+    # Doctor xem của mình, Admin xem của all, Patient xem để đặt lịch
+    current_user: dict = Depends(security.check_role(["ADMIN", "DOCTOR", "PATIENT", "NURSE"])) 
+):
+    return db.query(models.DoctorSchedule).filter(
+        models.DoctorSchedule.doctor_id == doctor_id
+    ).all()
+
+# 3. Cập nhật lịch làm việc
+@app.put("/schedules/{schedule_id}", response_model=schemas.ScheduleResponse)
+def update_schedule(
+    schedule_id: int,
+    sch_update: schemas.ScheduleUpdate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN", "DOCTOR"]))
+):
+    schedule = db.query(models.DoctorSchedule).get(schedule_id)
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Lịch làm việc không tồn tại")
+    
+    # Check quyền: Nếu là Doctor, chỉ được sửa lịch của chính mình
+    if current_user['role'] == 'DOCTOR':
+        # Cần logic lấy user_id từ token thực tế. Giả sử current_user['sub'] là username
+        db_user = db.query(models.User).filter(models.User.username == current_user['sub']).first()
+        if db_user.user_id != schedule.doctor_id:
+            raise HTTPException(status_code=403, detail="Không có quyền sửa lịch người khác")
+
+    # Update dynamic
+    if sch_update.shift_start:
+        schedule.shift_start = datetime.strptime(sch_update.shift_start, "%H:%M").time()
+    if sch_update.shift_end:
+        schedule.shift_end = datetime.strptime(sch_update.shift_end, "%H:%M").time()
+    if sch_update.is_active is not None:
+        schedule.is_active = sch_update.is_active
+        
+    # Validate logic
+    if schedule.shift_start >= schedule.shift_end:
+         raise HTTPException(status_code=400, detail="Giờ bắt đầu phải nhỏ hơn giờ kết thúc")
+
+    db.commit()
+    db.refresh(schedule)
+    return schedule
+
+# 4. Xóa lịch làm việc
+@app.delete("/schedules/{schedule_id}")
+def delete_schedule(
+    schedule_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN", "DOCTOR"]))
+):
+    schedule = db.query(models.DoctorSchedule).get(schedule_id)
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+        
+    # Check quyền tương tự update...
+    
+    db.delete(schedule)
+    db.commit()
+    return {"message": "Đã xóa lịch làm việc"}
+
+# --- MAIN.PY: MODULE QUẢN LÝ LỊCH HẸN (FULL CRUD) ---
+
+# 1. Lấy danh sách (Có Filter & JoinedLoad)
+@app.get("/appointments", response_model=list[schemas.AppointmentDetailResponse])
+def get_appointments(
+    doctor_id: Optional[int] = None,
+    patient_id: Optional[int] = None,
+    date_str: Optional[str] = None, # YYYY-MM-DD
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN", "DOCTOR", "NURSE", "PATIENT"]))
+):
+    query = db.query(models.Appointment).options(
+        joinedload(models.Appointment.patient),
+        joinedload(models.Appointment.doctor)
+    )
+    
+    # Filter logic
+    if doctor_id:
+        query = query.filter(models.Appointment.doctor_id == doctor_id)
+    if patient_id:
+        query = query.filter(models.Appointment.patient_id == patient_id)
+    if date_str:
+        query = query.filter(models.Appointment.appointment_date == date_str)
+    if status:
+        query = query.filter(models.Appointment.status == status)
+        
+    # Role Guard: Nếu là PATIENT, chỉ xem của mình (Logic giả định lấy ID từ token)
+    # if current_user['role'] == 'PATIENT':
+    #     user = db.query(models.User).filter(models.User.username == current_user['sub']).first()
+    #     # Tìm patient_id tương ứng... (cần query bảng Patients)
+    
+    results = query.order_by(desc(models.Appointment.appointment_date)).all()
+    
+    # Map response
+    response = []
+    for appt in results:
+        item = schemas.AppointmentDetailResponse.from_orm(appt)
+        item.patient_full_name = appt.patient.full_name if appt.patient else "Unknown"
+        item.doctor_full_name = appt.doctor.full_name if appt.doctor else "Unknown"
+        item.patient_phone = appt.patient.phone if appt.patient else ""
+        response.append(item)
+        
+    return response
+
+# 2. Xem chi tiết
+@app.get("/appointments/{appt_id}", response_model=schemas.AppointmentDetailResponse)
+def get_appointment_detail(appt_id: int, db: Session = Depends(get_db)):
+    appt = db.query(models.Appointment).options(
+        joinedload(models.Appointment.patient),
+        joinedload(models.Appointment.doctor)
+    ).get(appt_id)
+    if not appt:
+        raise HTTPException(status_code=404, detail="Không tìm thấy lịch hẹn")
+        
+    item = schemas.AppointmentDetailResponse.from_orm(appt)
+    item.patient_full_name = appt.patient.full_name if appt.patient else "Unknown"
+    item.doctor_full_name = appt.doctor.full_name if appt.doctor else "Unknown"
+    return item
+
+# 3. Cập nhật lịch hẹn (PUT) - Có check trùng
+@app.put("/appointments/{appt_id}", response_model=schemas.AppointmentResponse)
+def update_appointment(
+    appt_id: int,
+    appt_update: schemas.AppointmentUpdate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN", "DOCTOR", "PATIENT", "NURSE"]))
+):
+    appt = db.query(models.Appointment).get(appt_id)
+    if not appt:
+        raise HTTPException(status_code=404, detail="Lịch hẹn không tồn tại")
+
+    # Nếu cập nhật thời gian
+    if appt_update.appointment_date or appt_update.start_time:
+        new_date = appt_update.appointment_date or appt.appointment_date
+        new_time_str = appt_update.start_time or appt.start_time.strftime("%H:%M")
+        new_time = datetime.strptime(new_time_str, "%H:%M").time()
+        
+        # 1. Check quy tắc 2 tiếng (nếu user là Patient)
+        new_dt = datetime.combine(new_date, new_time)
+        if current_user['role'] == 'PATIENT' and new_dt < datetime.now() + timedelta(hours=2):
+             raise HTTPException(status_code=400, detail="Thay đổi lịch phải trước ít nhất 2 tiếng")
+
+        # 2. Check trùng lịch bác sĩ (QUAN TRỌNG: Loại trừ chính lịch hẹn này ra)
+        conflict = db.query(models.Appointment).filter(
+            models.Appointment.doctor_id == appt.doctor_id,
+            models.Appointment.appointment_date == new_date,
+            models.Appointment.start_time == new_time,
+            models.Appointment.status != 'CANCELLED',
+            models.Appointment.appointment_id != appt_id # <--- Loại trừ chính nó
+        ).first()
+        
+        if conflict:
+            raise HTTPException(status_code=400, detail="Khung giờ này bác sĩ đã bận")
+            
+        # Apply change
+        appt.appointment_date = new_date
+        appt.start_time = new_time
+        appt.end_time = (new_dt + timedelta(minutes=30)).time()
+
+    if appt_update.reason:
+        appt.reason = appt_update.reason
+    if appt_update.status:
+        appt.status = appt_update.status
+
+    db.commit()
+    db.refresh(appt)
+    return appt
+
+# 4. Hủy lịch (Cancel Logic)
+@app.post("/appointments/{appt_id}/cancel")
+def cancel_appointment(
+    appt_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN", "DOCTOR", "PATIENT"]))
+):
+    appt = db.query(models.Appointment).get(appt_id)
+    if not appt:
+        raise HTTPException(status_code=404, detail="Lịch hẹn không tồn tại")
+        
+    if appt.status in ['COMPLETED', 'CANCELLED']:
+         raise HTTPException(status_code=400, detail="Không thể hủy lịch đã hoàn thành hoặc đã hủy")
+
+    # Check thời gian: Chỉ hủy trước 1 tiếng
+    appt_dt = datetime.combine(appt.appointment_date, appt.start_time)
+    if appt_dt < datetime.now() + timedelta(hours=1):
+         raise HTTPException(status_code=400, detail="Chỉ có thể hủy trước giờ hẹn tối thiểu 1 tiếng")
+
+    appt.status = 'CANCELLED'
+    db.commit()
+    return {"message": "Đã hủy lịch hẹn thành công"}
+
+# 5. Xóa lịch (Delete)
+@app.delete("/appointments/{appt_id}")
+def delete_appointment(
+    appt_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN"])) # Chỉ Admin xóa
+):
+    appt = db.query(models.Appointment).get(appt_id)
+    if not appt:
+        raise HTTPException(status_code=404, detail="Không tìm thấy")
+    db.delete(appt)
+    db.commit()
+    return {"message": "Đã xóa lịch hẹn khỏi hệ thống"}
