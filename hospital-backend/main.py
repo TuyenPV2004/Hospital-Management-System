@@ -2425,16 +2425,16 @@ def export_report_excel(
     if report_type == 'doctors':
         # Gọi lại logic của report_doctor_performance
         raw_data = report_doctor_performance(f_date, t_date, db, current_user)
-        # Convert list of Pydantic models to dict
-        data = [item.dict() for item in raw_data]
+        # raw_data đã là list of dict, không cần convert
+        data = raw_data if isinstance(raw_data[0], dict) else [item.dict() for item in raw_data]
         
     elif report_type == 'services':
         raw_data = report_service_usage(f_date, t_date, db, current_user)
-        data = [item.dict() for item in raw_data]
+        data = raw_data if isinstance(raw_data[0], dict) else [item.dict() for item in raw_data]
         
     elif report_type == 'inpatients_cost':
         raw_data = report_inpatient_costs(f_date, t_date, db, current_user)
-        data = [item.dict() for item in raw_data]
+        data = raw_data if isinstance(raw_data[0], dict) else [item.dict() for item in raw_data]
         
     else:
         raise HTTPException(status_code=400, detail="Loại báo cáo không hợp lệ")
