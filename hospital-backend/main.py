@@ -11,6 +11,10 @@ import random
 import string
 from sqlalchemy.orm import joinedload 
 from sqlalchemy import or_, and_
+import pandas as pd
+import io
+from fastapi.responses import StreamingResponse
+from sqlalchemy import case
 
 app = FastAPI()
 FIXED_EXAM_FEE = 50000.0 # Phí khám cố định (VNĐ)
@@ -2226,3 +2230,231 @@ def preview_inpatient_billing(
         "medicine_details": med_details,
         "service_details": srv_details
     }
+
+@app.get("/reports/doctors-performance", response_model=list[schemas.DoctorPerformanceReport])
+def report_doctor_performance(
+    from_date: date,
+    to_date: date,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN"]))
+):
+    # Logic: Join User -> Visit -> ServiceRequest
+    # Tính tổng số ca khám (visits)
+    # Tính tổng tiền dịch vụ (service_requests)
+    
+    # 1. Thống kê Visits
+    visits_sub = db.query(
+        models.Visit.doctor_id,
+        func.count(models.Visit.visit_id).label("visit_count")
+    ).filter(
+        func.date(models.Visit.visit_date) >= from_date,
+        func.date(models.Visit.visit_date) <= to_date
+    ).group_by(models.Visit.doctor_id).subquery()
+
+    # 2. Thống kê Revenue từ Service Requests
+    revenue_sub = db.query(
+        models.ServiceRequest.doctor_id,
+        func.sum(models.ServiceRequest.quantity * models.Service.price).label("service_rev")
+    ).join(models.Service).join(models.Visit).filter(
+        func.date(models.Visit.visit_date) >= from_date,
+        func.date(models.Visit.visit_date) <= to_date,
+        models.ServiceRequest.status != 'CANCELLED'
+    ).group_by(models.ServiceRequest.doctor_id).subquery()
+
+    # 3. Tổng hợp
+    doctors = db.query(models.User).filter(models.User.role == 'DOCTOR').all()
+    
+    result = []
+    # Query phụ để map dữ liệu (hoặc dùng Outer Join phức tạp hơn)
+    # Ở đây dùng loop đơn giản vì số lượng bác sĩ không quá lớn
+    for doc in doctors:
+        v_count = 0
+        s_rev = 0
+        
+        # Check visit count
+        v_data = db.query(visits_sub).filter(visits_sub.c.doctor_id == doc.user_id).first()
+        if v_data: v_count = v_data.visit_count
+        
+        # Check revenue
+        r_data = db.query(revenue_sub).filter(revenue_sub.c.doctor_id == doc.user_id).first()
+        if r_data: s_rev = r_data.service_rev or 0
+
+        result.append({
+            "doctor_id": doc.user_id,
+            "doctor_name": doc.full_name,
+            "total_visits": v_count,
+            "total_service_revenue": float(s_rev)
+        })
+        
+    return result
+
+# B. BÁO CÁO SỬ DỤNG DỊCH VỤ
+@app.get("/reports/services-usage", response_model=list[schemas.ServiceUsageReport])
+def report_service_usage(
+    from_date: date,
+    to_date: date,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN"]))
+):
+    results = db.query(
+        models.Service.service_id,
+        models.Service.name,
+        models.Service.type.label("category"),
+        func.sum(models.ServiceRequest.quantity).label("usage_count"),
+        func.sum(models.ServiceRequest.quantity * models.Service.price).label("total_revenue")
+    ).join(models.ServiceRequest).filter(
+        func.date(models.ServiceRequest.created_at) >= from_date,
+        func.date(models.ServiceRequest.created_at) <= to_date,
+        models.ServiceRequest.status != 'CANCELLED'
+    ).group_by(models.Service.service_id).all()
+    
+    return [
+        {
+            "service_id": r.service_id,
+            "service_name": r.name,
+            "category": r.category,
+            "usage_count": r.usage_count or 0,
+            "total_revenue": float(r.total_revenue or 0)
+        } for r in results
+    ]
+
+# C. BÁO CÁO HIỆN TRẠNG NỘI TRÚ (CENSUS)
+@app.get("/reports/inpatients/census", response_model=list[schemas.InpatientCensusReport])
+def report_inpatient_census(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN", "DOCTOR", "NURSE"]))
+):
+    # Thống kê theo Khoa -> Phòng -> Giường
+    departments = db.query(models.Department).all()
+    result = []
+    
+    for dept in departments:
+        total_beds = 0
+        occupied_beds = 0
+        
+        for room in dept.rooms:
+            for bed in room.beds:
+                total_beds += 1
+                if bed.status == 'OCCUPIED':
+                    occupied_beds += 1
+        
+        rate = (occupied_beds / total_beds * 100) if total_beds > 0 else 0
+        
+        result.append({
+            "department_name": dept.name,
+            "total_beds": total_beds,
+            "occupied_beds": occupied_beds,
+            "occupancy_rate": round(rate, 2)
+        })
+    return result
+
+# D. BÁO CÁO CHI PHÍ NỘI TRÚ (Đã xuất viện)
+@app.get("/reports/inpatients/costs", response_model=list[schemas.InpatientCostReport])
+def report_inpatient_costs(
+    from_date: date,
+    to_date: date,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN"]))
+):
+    # Lấy danh sách BN đã xuất viện trong khoảng thời gian
+    records = db.query(models.InpatientRecord).filter(
+        models.InpatientRecord.status == 'DISCHARGED',
+        func.date(models.InpatientRecord.discharge_date) >= from_date,
+        func.date(models.InpatientRecord.discharge_date) <= to_date
+    ).all()
+    
+    result = []
+    for rec in records:
+        # Tái sử dụng logic tính tiền (Có thể tách hàm common để tối ưu code)
+        # 1. Tiền giường
+        allocs = db.query(models.BedAllocation).filter(models.BedAllocation.inpatient_id == rec.inpatient_id).all()
+        bed_fee = 0
+        for a in allocs:
+            if a.check_out_time and a.check_in_time:
+                days = max(1, (a.check_out_time - a.check_in_time).days + 1) # Simple logic
+                bed_fee += days * float(a.price_per_day)
+        
+        # 2. Tiền thuốc & DV (Query Visits trong khoảng thời gian nằm viện)
+        visits = db.query(models.Visit).filter(
+            models.Visit.patient_id == rec.patient_id,
+            models.Visit.visit_date >= rec.admission_date,
+            models.Visit.visit_date <= rec.discharge_date
+        ).all()
+        
+        med_fee = 0
+        srv_fee = 0
+        for v in visits:
+            for p in v.prescriptions:
+                med = db.query(models.Medicine).get(p.medicine_id)
+                med_fee += p.quantity * float(med.price)
+            for req in v.service_requests:
+                if req.status != 'CANCELLED':
+                    srv = req.service
+                    srv_fee += req.quantity * float(srv.price)
+        
+        result.append({
+            "inpatient_id": rec.inpatient_id,
+            "patient_name": rec.patient.full_name,
+            "admission_date": rec.admission_date.date(),
+            "discharge_date": rec.discharge_date.date(),
+            "bed_fee": bed_fee,
+            "service_fee": srv_fee,
+            "medicine_fee": med_fee,
+            "total_cost": bed_fee + srv_fee + med_fee
+        })
+        
+    return result
+
+# E. XUẤT EXCEL (CHUNG CHO CÁC LOẠI BÁO CÁO)
+@app.get("/reports/export")
+def export_report_excel(
+    report_type: str, # 'doctors', 'services', 'inpatients_cost'
+    from_date: str,   # YYYY-MM-DD
+    to_date: str,     # YYYY-MM-DD
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN"]))
+):
+    # Parse date
+    f_date = datetime.strptime(from_date, "%Y-%m-%d").date()
+    t_date = datetime.strptime(to_date, "%Y-%m-%d").date()
+    
+    data = []
+    filename = f"report_{report_type}_{from_date}_{to_date}.xlsx"
+    
+    # 1. Gọi logic lấy dữ liệu tương ứng (Tái sử dụng code hoặc gọi hàm)
+    if report_type == 'doctors':
+        # Gọi lại logic của report_doctor_performance
+        raw_data = report_doctor_performance(f_date, t_date, db, current_user)
+        # Convert list of Pydantic models to dict
+        data = [item.dict() for item in raw_data]
+        
+    elif report_type == 'services':
+        raw_data = report_service_usage(f_date, t_date, db, current_user)
+        data = [item.dict() for item in raw_data]
+        
+    elif report_type == 'inpatients_cost':
+        raw_data = report_inpatient_costs(f_date, t_date, db, current_user)
+        data = [item.dict() for item in raw_data]
+        
+    else:
+        raise HTTPException(status_code=400, detail="Loại báo cáo không hợp lệ")
+
+    # 2. Tạo DataFrame và Excel File
+    df = pd.DataFrame(data)
+    
+    # Tạo Buffer trong bộ nhớ
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name="Report")
+    
+    output.seek(0)
+    
+    # 3. Trả về StreamingResponse
+    headers = {
+        'Content-Disposition': f'attachment; filename="{filename}"'
+    }
+    return StreamingResponse(
+        output, 
+        headers=headers, 
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )

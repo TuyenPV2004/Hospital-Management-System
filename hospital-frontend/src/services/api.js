@@ -140,4 +140,42 @@ export const getBedMap = async () => {
     return response.data;
 };
 
+// --- MODULE BÁO CÁO ---
+export const getDoctorPerformanceReport = async (fromDate, toDate) => {
+    const response = await api.get(`/reports/doctors-performance?from_date=${fromDate}&to_date=${toDate}`);
+    return response.data;
+};
+
+export const getServiceUsageReport = async (fromDate, toDate) => {
+    const response = await api.get(`/reports/services-usage?from_date=${fromDate}&to_date=${toDate}`);
+    return response.data;
+};
+
+export const getInpatientCensusReport = async () => {
+    const response = await api.get(`/reports/inpatients/census`);
+    return response.data;
+};
+
+export const getInpatientCostReport = async (fromDate, toDate) => {
+    const response = await api.get(`/reports/inpatients/costs?from_date=${fromDate}&to_date=${toDate}`);
+    return response.data;
+};
+
+// Hàm download Excel
+export const exportReportExcel = async (type, fromDate, toDate) => {
+    // Lưu ý: responseType: 'blob' là bắt buộc để tải file
+    const response = await api.get(`/reports/export?report_type=${type}&from_date=${fromDate}&to_date=${toDate}`, {
+        responseType: 'blob'
+    });
+    
+    // Tạo link ảo để download
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `report_${type}_${fromDate}_${toDate}.xlsx`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+};
+
 export default api;

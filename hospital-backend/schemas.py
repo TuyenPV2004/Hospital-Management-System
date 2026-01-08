@@ -655,3 +655,52 @@ class InpatientBillingPreview(BaseModel):
     bed_details: List[dict]
     medicine_details: List[dict]
     service_details: List[dict]
+
+# --- BỔ SUNG VÀO schemas.py ---
+
+# --- MODULE BÁO CÁO (REPORTS) ---
+
+# 1. Báo cáo Hiệu suất Bác sĩ
+class DoctorPerformanceReport(BaseModel):
+    doctor_id: int
+    doctor_name: str
+    total_visits: int
+    total_service_revenue: float # Doanh thu từ chỉ định CLS
+    
+    class Config:
+        from_attributes = True
+
+# 2. Báo cáo Hiện trạng Nội trú (Census)
+class InpatientCensusReport(BaseModel):
+    department_name: str
+    total_beds: int
+    occupied_beds: int
+    occupancy_rate: float # % lấp đầy
+    
+    class Config:
+        from_attributes = True
+
+# 3. Báo cáo Sử dụng Dịch vụ
+class ServiceUsageReport(BaseModel):
+    service_id: int
+    service_name: str
+    category: str # LAB / IMAGING
+    usage_count: int
+    total_revenue: float
+
+    class Config:
+        from_attributes = True
+
+# 4. Báo cáo Chi phí Nội trú (Đã xuất viện)
+class InpatientCostReport(BaseModel):
+    inpatient_id: int
+    patient_name: str
+    admission_date: date
+    discharge_date: date
+    bed_fee: float
+    service_fee: float
+    medicine_fee: float
+    total_cost: float
+    
+    class Config:
+        from_attributes = True
