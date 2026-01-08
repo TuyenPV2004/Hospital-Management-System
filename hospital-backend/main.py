@@ -1961,17 +1961,41 @@ def create_inpatient(
 # 2. Chi tiết hồ sơ nội trú (Daily Orders + Bed History)
 @app.get("/inpatients/{inpatient_id}", response_model=schemas.InpatientDetailResponse)
 def get_inpatient_detail(inpatient_id: int, db: Session = Depends(get_db)):
-    record = db.query(models.InpatientRecord).get(inpatient_id)
+    record = db.query(models.InpatientRecord).options(
+        joinedload(models.InpatientRecord.patient),
+        joinedload(models.InpatientRecord.allocations).joinedload(models.BedAllocation.bed),
+        joinedload(models.InpatientRecord.daily_orders)
+    ).filter(models.InpatientRecord.inpatient_id == inpatient_id).first()
+    
     if not record:
         raise HTTPException(status_code=404, detail="Hồ sơ không tồn tại")
-        
-    # Map cơ bản
-    resp = schemas.InpatientDetailResponse.from_orm(record)
-    resp.patient_name = record.patient.full_name
+    
+    # Get current bed allocation
+    current_alloc = db.query(models.BedAllocation).filter(
+        models.BedAllocation.inpatient_id == inpatient_id,
+        models.BedAllocation.check_out_time == None
+    ).first()
+    
+    bed_id = current_alloc.bed_id if current_alloc else None
+    bed_number = current_alloc.bed.bed_number if current_alloc and current_alloc.bed else None
     
     # Lấy tên bác sĩ điều trị
     doc = db.query(models.User).get(record.treating_doctor_id)
-    resp.treating_doctor_name = doc.full_name if doc else "Unknown"
+    
+    # Manually construct response with all required fields
+    resp = schemas.InpatientDetailResponse(
+        inpatient_id=record.inpatient_id,
+        patient_id=record.patient_id,
+        patient_name=record.patient.full_name,
+        bed_id=bed_id,
+        bed_number=bed_number,
+        status=record.status,
+        admission_date=record.admission_date,
+        treating_doctor_name=doc.full_name if doc else "Unknown",
+        daily_orders=[],
+        bed_history=[],
+        current_bed_fee=0.0
+    )
 
     # 1. Get Daily Orders
     orders = db.query(models.DailyOrder).filter(
