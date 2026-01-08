@@ -25,19 +25,20 @@ const AdminReport = () => {
         try {
             if (activeTab === 'doctors') {
                 const res = await getDoctorPerformanceReport(fromDate, toDate);
-                setData(res);
+                setData(res || []);
             } else if (activeTab === 'services') {
                 const res = await getServiceUsageReport(fromDate, toDate);
-                setData(res);
+                setData(res || []);
             } else if (activeTab === 'census') {
                 const res = await getInpatientCensusReport();
-                setCensusData(res);
+                setCensusData(res || []);
             } else if (activeTab === 'inpatients_cost') {
                 const res = await getInpatientCostReport(fromDate, toDate);
-                setData(res);
+                setData(res || []);
             }
         } catch (error) {
             console.error("Lỗi tải báo cáo", error);
+            alert(`Lỗi tải dữ liệu: ${error.message || error}`);
         }
     };
 
@@ -124,113 +125,129 @@ const AdminReport = () => {
             <div className="bg-white shadow rounded overflow-hidden">
                 {/* TAB 1: DOCTORS */}
                 {activeTab === 'doctors' && (
-                    <table className="min-w-full">
-                        <thead className="bg-gray-100">
-                            <tr>
-                                <th className="p-3 text-left">Bác sĩ</th>
-                                <th className="p-3 text-right">Tổng lượt khám</th>
-                                <th className="p-3 text-right">Doanh thu chỉ định</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {data.map((row, idx) => (
-                                <tr key={idx} className="border-b">
-                                    <td className="p-3 font-medium">{row.doctor_name}</td>
-                                    <td className="p-3 text-right">{row.total_visits}</td>
-                                    <td className="p-3 text-right font-bold text-blue-600">{row.total_service_revenue.toLocaleString()} đ</td>
+                    data.length === 0 ? (
+                        <div className="p-6 text-center text-gray-500">Không có dữ liệu</div>
+                    ) : (
+                        <table className="min-w-full">
+                            <thead className="bg-gray-100">
+                                <tr>
+                                    <th className="p-3 text-left">Bác sĩ</th>
+                                    <th className="p-3 text-right">Tổng lượt khám</th>
+                                    <th className="p-3 text-right">Doanh thu chỉ định</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {data.map((row, idx) => (
+                                    <tr key={idx} className="border-b">
+                                        <td className="p-3 font-medium">{row.doctor_name}</td>
+                                        <td className="p-3 text-right">{row.total_visits}</td>
+                                        <td className="p-3 text-right font-bold text-blue-600">{row.total_service_revenue.toLocaleString()} đ</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )
                 )}
 
                 {/* TAB 2: SERVICES */}
                 {activeTab === 'services' && (
-                    <table className="min-w-full">
-                        <thead className="bg-gray-100">
-                            <tr>
-                                <th className="p-3 text-left">Tên Dịch vụ</th>
-                                <th className="p-3 text-left">Phân loại</th>
-                                <th className="p-3 text-right">Số lần dùng</th>
-                                <th className="p-3 text-right">Tổng doanh thu</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {data.map((row, idx) => (
-                                <tr key={idx} className="border-b">
-                                    <td className="p-3 font-medium">{row.service_name}</td>
-                                    <td className="p-3">
-                                        <span className={`px-2 py-1 text-xs rounded ${row.category === 'LAB' ? 'bg-purple-100 text-purple-800' : 'bg-orange-100 text-orange-800'}`}>
-                                            {row.category}
-                                        </span>
-                                    </td>
-                                    <td className="p-3 text-right">{row.usage_count}</td>
-                                    <td className="p-3 text-right font-bold text-green-600">{row.total_revenue.toLocaleString()} đ</td>
+                    data.length === 0 ? (
+                        <div className="p-6 text-center text-gray-500">Không có dữ liệu</div>
+                    ) : (
+                        <table className="min-w-full">
+                            <thead className="bg-gray-100">
+                                <tr>
+                                    <th className="p-3 text-left">Tên Dịch vụ</th>
+                                    <th className="p-3 text-left">Phân loại</th>
+                                    <th className="p-3 text-right">Số lần dùng</th>
+                                    <th className="p-3 text-right">Tổng doanh thu</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {data.map((row, idx) => (
+                                    <tr key={idx} className="border-b">
+                                        <td className="p-3 font-medium">{row.service_name}</td>
+                                        <td className="p-3">
+                                            <span className={`px-2 py-1 text-xs rounded ${row.category === 'LAB' ? 'bg-purple-100 text-purple-800' : 'bg-orange-100 text-orange-800'}`}>
+                                                {row.category}
+                                            </span>
+                                        </td>
+                                        <td className="p-3 text-right">{row.usage_count}</td>
+                                        <td className="p-3 text-right font-bold text-green-600">{row.total_revenue.toLocaleString()} đ</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )
                 )}
 
                 {/* TAB 3: CENSUS (Table riêng dùng censusData) */}
                 {activeTab === 'census' && (
-                    <table className="min-w-full">
-                        <thead className="bg-gray-100">
-                            <tr>
-                                <th className="p-3 text-left">Khoa / Phòng</th>
-                                <th className="p-3 text-right">Tổng số giường</th>
-                                <th className="p-3 text-right">Đang sử dụng</th>
-                                <th className="p-3 text-right">Tỷ lệ lấp đầy</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {censusData.map((row, idx) => (
-                                <tr key={idx} className="border-b">
-                                    <td className="p-3 font-bold text-blue-800">{row.department_name}</td>
-                                    <td className="p-3 text-right">{row.total_beds}</td>
-                                    <td className="p-3 text-right">{row.occupied_beds}</td>
-                                    <td className="p-3 text-right">
-                                        <span className={`font-bold ${row.occupancy_rate > 90 ? 'text-red-600' : 'text-green-600'}`}>
-                                            {row.occupancy_rate}%
-                                        </span>
-                                    </td>
+                    censusData.length === 0 ? (
+                        <div className="p-6 text-center text-gray-500">Không có dữ liệu</div>
+                    ) : (
+                        <table className="min-w-full">
+                            <thead className="bg-gray-100">
+                                <tr>
+                                    <th className="p-3 text-left">Khoa / Phòng</th>
+                                    <th className="p-3 text-right">Tổng số giường</th>
+                                    <th className="p-3 text-right">Đang sử dụng</th>
+                                    <th className="p-3 text-right">Tỷ lệ lấp đầy</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {censusData.map((row, idx) => (
+                                    <tr key={idx} className="border-b">
+                                        <td className="p-3 font-bold text-blue-800">{row.department_name}</td>
+                                        <td className="p-3 text-right">{row.total_beds}</td>
+                                        <td className="p-3 text-right">{row.occupied_beds}</td>
+                                        <td className="p-3 text-right">
+                                            <span className={`font-bold ${row.occupancy_rate > 90 ? 'text-red-600' : 'text-green-600'}`}>
+                                                {row.occupancy_rate}%
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )
                 )}
 
                 {/* TAB 4: INPATIENT COSTS */}
                 {activeTab === 'inpatients_cost' && (
-                    <table className="min-w-full text-sm">
-                        <thead className="bg-gray-100">
-                            <tr>
-                                <th className="p-3 text-left">Bệnh nhân</th>
-                                <th className="p-3 text-center">Ngày vào/ra</th>
-                                <th className="p-3 text-right">Tiền giường</th>
-                                <th className="p-3 text-right">Tiền thuốc</th>
-                                <th className="p-3 text-right">Tiền DV</th>
-                                <th className="p-3 text-right">Tổng chi phí</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {data.map((row, idx) => (
-                                <tr key={idx} className="border-b hover:bg-gray-50">
-                                    <td className="p-3 font-medium">
-                                        {row.patient_name}
-                                        <div className="text-xs text-gray-500">IP-{row.inpatient_id}</div>
-                                    </td>
-                                    <td className="p-3 text-center">
-                                        {row.admission_date} <br/> ➝ {row.discharge_date}
-                                    </td>
-                                    <td className="p-3 text-right">{row.bed_fee.toLocaleString()}</td>
-                                    <td className="p-3 text-right">{row.medicine_fee.toLocaleString()}</td>
-                                    <td className="p-3 text-right">{row.service_fee.toLocaleString()}</td>
-                                    <td className="p-3 text-right font-bold text-red-600">{row.total_cost.toLocaleString()} đ</td>
+                    data.length === 0 ? (
+                        <div className="p-6 text-center text-gray-500">Không có dữ liệu</div>
+                    ) : (
+                        <table className="min-w-full text-sm">
+                            <thead className="bg-gray-100">
+                                <tr>
+                                    <th className="p-3 text-left">Bệnh nhân</th>
+                                    <th className="p-3 text-center">Ngày vào/ra</th>
+                                    <th className="p-3 text-right">Tiền giường</th>
+                                    <th className="p-3 text-right">Tiền thuốc</th>
+                                    <th className="p-3 text-right">Tiền DV</th>
+                                    <th className="p-3 text-right">Tổng chi phí</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {data.map((row, idx) => (
+                                    <tr key={idx} className="border-b hover:bg-gray-50">
+                                        <td className="p-3 font-medium">
+                                            {row.patient_name}
+                                            <div className="text-xs text-gray-500">IP-{row.inpatient_id}</div>
+                                        </td>
+                                        <td className="p-3 text-center">
+                                            {row.admission_date} <br/> ➝ {row.discharge_date}
+                                        </td>
+                                        <td className="p-3 text-right">{row.bed_fee.toLocaleString()}</td>
+                                        <td className="p-3 text-right">{row.medicine_fee.toLocaleString()}</td>
+                                        <td className="p-3 text-right">{row.service_fee.toLocaleString()}</td>
+                                        <td className="p-3 text-right font-bold text-red-600">{row.total_cost.toLocaleString()} đ</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )
                 )}
             </div>
         </div>
