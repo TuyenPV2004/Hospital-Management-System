@@ -19,7 +19,9 @@ import InventoryAlerts from './pages/InventoryAlerts';
 import InpatientMap from './pages/InpatientMap';
 import Profile from './pages/Profile';
 import Patients from './pages/Patients';
-import PatientDetail from './pages/PatientDetail' // Import trang Profile mới
+import PatientDetail from './pages/PatientDetail';
+import AppointmentManager from './pages/AppointmentManager'
+
 
 function App() {
   return (
@@ -59,6 +61,16 @@ function App() {
             <ProtectedRoute 
               allowedRoles={["ADMIN", "DOCTOR", "NURSE", "PATIENT"]} 
               Component={() => <MainLayout><Booking /></MainLayout>} 
+            />
+          } 
+        />
+
+        <Route 
+          path="/appointments" 
+          element={
+            <ProtectedRoute 
+              allowedRoles={["ADMIN", "DOCTOR", "NURSE"]} 
+              Component={() => <MainLayout><AppointmentManager /></MainLayout>} 
             />
           } 
         />

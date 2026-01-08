@@ -31,6 +31,7 @@ const Navbar = () => {
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: '📊', roles: ['ADMIN', 'DOCTOR', 'NURSE', 'PATIENT', 'TECHNICIAN'] },
     { name: 'Đặt lịch', path: '/booking', icon: '📅', roles: ['ADMIN', 'DOCTOR', 'NURSE', 'PATIENT'] },
+    { name: 'Quản lý lịch', path: '/appointments', icon: '🗓️', roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
     { name: 'Hồ sơ BN', path: '/patients', icon: '📋', roles: ['ADMIN', 'DOCTOR', 'NURSE', 'TECHNICIAN'] },
     { name: 'Tiếp đón', path: '/reception', icon: '✍️', roles: ['ADMIN', 'NURSE'] },
     { name: 'Phòng khám', path: '/doctor', icon: '🩺', roles: ['ADMIN', 'DOCTOR'] },
