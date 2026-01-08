@@ -5,6 +5,7 @@ from sqlalchemy.sql import func
 from database import Base
 from sqlalchemy import Time, Date, Boolean
 from sqlalchemy import JSON
+from sqlalchemy import Boolean
 
 # Bảng Users
 class User(Base):
@@ -47,7 +48,8 @@ class Patient(Base):
     height = Column(Float) # Đã import Float
     weight = Column(Float) # Đã import Float
     allergies = Column(Text)       
-    medical_history = Column(Text) 
+    medical_history = Column(Text)
+    is_active = Column(Boolean, default=True) 
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
@@ -102,7 +104,9 @@ class Visit(Base):
 
     # --- ĐÃ SỬA: Mở comment dòng này để fix lỗi InvalidRequestError ---
     patient = relationship("Patient", back_populates="visits")
- 
+    prescriptions = relationship("Prescription", backref="visit") 
+    service_requests = relationship("ServiceRequest", back_populates="visit")
+    
 # Bảng Prescriptions (Đơn thuốc)    
 class Prescription(Base):
     __tablename__ = "Prescriptions"
@@ -201,6 +205,7 @@ class ServiceRequest(Base):
     doctor = relationship("User")
     # Quan hệ 1-1 với kết quả (một phiếu yêu cầu có 1 kết quả)
     result = relationship("ServiceResult", back_populates="request", uselist=False)
+    visit = relationship("Visit", back_populates="service_requests")
 
 class ServiceResult(Base):
     __tablename__ = "ServiceResults"

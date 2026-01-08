@@ -446,3 +446,64 @@ class UserProfileResponse(BaseModel):
 
     class Config:
         from_attributes = True
+# schemas.py
+
+# 1. Schema UPDATE Bệnh nhân (Cho phép field nào được sửa thì khai báo ở đây)
+class PatientUpdate(BaseModel):
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+    emergency_contact: Optional[str] = None
+    height: Optional[float] = None
+    weight: Optional[float] = None
+    blood_type: Optional[str] = None
+    allergies: Optional[str] = None
+    medical_history: Optional[str] = None
+    # Không cho sửa CCCD và BHYT ở đây (logic nghiệp vụ)
+
+# 2. Schema HIỂN THỊ CHI TIẾT LỊCH SỬ (History Enhanced)
+# Chúng ta tái sử dụng PrescriptionResponse và ServiceRequestResponse đã có, 
+# hoặc tạo bản rút gọn nếu cần.
+
+# Schema con: Thuốc trong lịch sử
+class PrescriptionHistoryItem(BaseModel):
+    medicine_name: str # Map từ Medicine.name
+    quantity: int
+    usage_instruction: Optional[str]
+    dosage_morning: Optional[str]
+    dosage_noon: Optional[str]
+    dosage_afternoon: Optional[str]
+    dosage_evening: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+# Schema con: Dịch vụ trong lịch sử
+class ServiceRequestHistoryItem(BaseModel):
+    service_name: str # Map từ Service.name
+    status: str
+    result_conclusion: Optional[str] = None # Map từ ServiceResult.conclusion
+
+    class Config:
+        from_attributes = True
+
+# Schema cha: Chi tiết 1 lượt khám trong lịch sử
+class VisitHistoryDetail(BaseModel):
+    visit_id: int
+    visit_date: datetime
+    doctor_name: Optional[str] = None # Sẽ map thủ công hoặc qua relation
+    diagnosis: Optional[str]
+    status: str
+    chief_complaint: Optional[str]
+    
+    # DANH SÁCH CON (Nested)
+    prescriptions: List[PrescriptionHistoryItem] = []
+    service_requests: List[ServiceRequestHistoryItem] = []
+
+    class Config:
+        from_attributes = True
+
+# Schema trả về cho API Get Detail Patient
+class PatientDetailResponse(PatientResponse):
+    pass # Tạm thời giống PatientResponse, có thể mở rộng sau

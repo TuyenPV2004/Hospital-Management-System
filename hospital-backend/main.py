@@ -9,8 +9,7 @@ from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from pydantic import EmailStr
 import random
 import string
-from sqlalchemy.orm import joinedload
-
+from sqlalchemy.orm import joinedload 
 
 app = FastAPI()
 FIXED_EXAM_FEE = 50000.0 # Phí khám cố định (VNĐ)
@@ -1306,3 +1305,131 @@ def get_inventory_alerts(db: Session = Depends(get_db)):
             })
 
     return alerts
+
+
+
+# --- API MỚI 1: Lấy chi tiết bệnh nhân (Get Detail) ---
+@app.get("/patients/{patient_id}", response_model=schemas.PatientResponse)
+def get_patient_detail(
+    patient_id: int, 
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN", "DOCTOR", "NURSE", "TECHNICIAN"]))
+):
+    patient = db.query(models.Patient).filter(
+        models.Patient.patient_id == patient_id,
+        models.Patient.is_active == True # Chỉ lấy bệnh nhân chưa bị xóa
+    ).first()
+    
+    if not patient:
+        raise HTTPException(status_code=404, detail="Bệnh nhân không tồn tại")
+    return patient
+
+# --- API MỚI 2: Cập nhật bệnh nhân (Update) ---
+@app.put("/patients/{patient_id}", response_model=schemas.PatientResponse)
+def update_patient(
+    patient_id: int,
+    patient_update: schemas.PatientUpdate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN", "NURSE", "DOCTOR"]))
+):
+    # Tìm bệnh nhân
+    db_patient = db.query(models.Patient).filter(models.Patient.patient_id == patient_id).first()
+    if not db_patient:
+        raise HTTPException(status_code=404, detail="Bệnh nhân không tồn tại")
+
+    # Cập nhật dynamic các trường được gửi lên
+    update_data = patient_update.dict(exclude_unset=True) # Chỉ lấy các trường user có gửi
+    for key, value in update_data.items():
+        setattr(db_patient, key, value)
+
+    db.commit()
+    db.refresh(db_patient)
+    return db_patient
+
+# --- API MỚI 3: Xóa mềm bệnh nhân (Soft Delete) ---
+@app.delete("/patients/{patient_id}")
+def delete_patient(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN"])) # Chỉ Admin được xóa
+):
+    db_patient = db.query(models.Patient).filter(models.Patient.patient_id == patient_id).first()
+    if not db_patient:
+        raise HTTPException(status_code=404, detail="Bệnh nhân không tồn tại")
+    
+    # Logic xóa mềm
+    db_patient.is_active = False
+    
+    # Tùy chọn: Hủy các lịch hẹn tương lai của bệnh nhân này nếu cần
+    # ...
+
+    db.commit()
+    return {"message": "Đã xóa hồ sơ bệnh nhân (Soft Delete)"}
+
+# --- CẢI TIẾN API LỊCH SỬ (History Enhanced) ---
+# Thay thế hoặc cập nhật API get_patient_history cũ
+@app.get("/patients/{patient_id}/history-detail", response_model=List[schemas.VisitHistoryDetail])
+def get_patient_history_detail(
+    patient_id: int, 
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme) # Ai có token hợp lệ đều xem được (hoặc giới hạn role)
+):
+    # 1. Kiểm tra bệnh nhân
+    patient = db.query(models.Patient).get(patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Bệnh nhân không tồn tại")
+
+    # 2. Query Visits kèm theo Prescriptions và ServiceRequests (Eager Loading)
+    # Sử dụng joinedload để tránh lỗi N+1 query
+    visits = db.query(models.Visit).options(
+        joinedload(models.Visit.prescriptions).joinedload(models.Prescription.medicine), # Load thuốc + tên thuốc
+        joinedload(models.Visit.service_requests).joinedload(models.ServiceRequest.service), # Load dịch vụ + tên
+        joinedload(models.Visit.service_requests).joinedload(models.ServiceRequest.result)   # Load kết quả
+    ).filter(
+        models.Visit.patient_id == patient_id
+    ).order_by(models.Visit.visit_date.desc()).all()
+
+    # 3. Map dữ liệu thủ công sang Schema (để đảm bảo cấu trúc đẹp nhất)
+    result = []
+    for v in visits:
+        # Map Prescriptions
+        pres_list = []
+        for p in v.prescriptions:
+            # medicine relationship cần được định nghĩa trong model Prescription 
+            # (Medicine = relationship("Medicine"))
+            # Nếu chưa có relationship, bạn có thể phải query thủ công hoặc dùng joinedload như trên
+            med_name = p.medicine.name if p.medicine else "Unknown Medicine"
+            pres_list.append({
+                "medicine_name": med_name,
+                "quantity": p.quantity,
+                "usage_instruction": p.usage_instruction,
+                "dosage_morning": p.dosage_morning,
+                "dosage_noon": p.dosage_noon,
+                "dosage_afternoon": p.dosage_afternoon,
+                "dosage_evening": p.dosage_evening
+            })
+
+        # Map Service Requests
+        srv_list = []
+        for req in v.service_requests:
+            srv_name = req.service.name if req.service else "Unknown Service"
+            conclusion = req.result.conclusion if req.result else None
+            srv_list.append({
+                "service_name": srv_name,
+                "status": req.status,
+                "result_conclusion": conclusion
+            })
+
+        # Map Visit
+        result.append({
+            "visit_id": v.visit_id,
+            "visit_date": v.visit_date,
+            "doctor_name": f"BS. ID {v.doctor_id}", # Có thể join bảng User để lấy tên thật
+            "diagnosis": v.diagnosis,
+            "status": v.status,
+            "chief_complaint": v.chief_complaint,
+            "prescriptions": pres_list,
+            "service_requests": srv_list
+        })
+
+    return result

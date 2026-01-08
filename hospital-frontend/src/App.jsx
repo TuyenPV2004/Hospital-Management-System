@@ -17,7 +17,9 @@ import AdminUsers from './pages/AdminUsers';
 import InventoryImport from './pages/InventoryImport';
 import InventoryAlerts from './pages/InventoryAlerts';
 import InpatientMap from './pages/InpatientMap';
-import Profile from './pages/Profile'; // Import trang Profile mới
+import Profile from './pages/Profile';
+import Patients from './pages/Patients';
+import PatientDetail from './pages/PatientDetail' // Import trang Profile mới
 
 function App() {
   return (
@@ -152,7 +154,25 @@ function App() {
             />
           } 
         />
-
+        <Route 
+          path="/patients" 
+          element={
+            <ProtectedRoute 
+              allowedRoles={["ADMIN", "DOCTOR", "NURSE", "TECHNICIAN"]} 
+              Component={() => <MainLayout><Patients /></MainLayout>} 
+            />
+          } 
+        />
+        
+        <Route 
+          path="/patients/:id" 
+          element={
+            <ProtectedRoute 
+              allowedRoles={["ADMIN", "DOCTOR", "NURSE", "TECHNICIAN"]} 
+              Component={() => <MainLayout><PatientDetail /></MainLayout>} 
+            />
+          } 
+        />
       </Routes>
     </Router>
   );
