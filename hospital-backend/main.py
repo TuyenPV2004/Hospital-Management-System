@@ -9,6 +9,8 @@ from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from pydantic import EmailStr
 import random
 import string
+from sqlalchemy.orm import joinedload
+
 
 app = FastAPI()
 FIXED_EXAM_FEE = 50000.0 # Phí khám cố định (VNĐ)
@@ -196,21 +198,97 @@ def get_all_users(
     return db.query(models.User).filter(models.User.role.in_(['ADMIN', 'DOCTOR', 'NURSE','TECHNICIAN'])).all()
 
 # --- API 2: Lấy thông tin người dùng hiện tại (Cần Token mới gọi được) ---
-@app.get("/users/me", response_model=schemas.UserResponse)
+@app.get("/users/me", response_model=schemas.UserProfileResponse)
 def read_users_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    # Giải mã token để lấy username (Logic đơn giản để test)
     try:
         payload = security.jwt.decode(token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
         username: str = payload.get("sub")
-        if username is None:
-            raise HTTPException(status_code=401, detail="Token không hợp lệ")
     except security.jwt.JWTError:
         raise HTTPException(status_code=401, detail="Token không hợp lệ")
         
-    user = db.query(models.User).filter(models.User.username == username).first()
+    # Query User và join sẵn với Patient để lấy CCCD/BHYT nếu có
+    user = db.query(models.User).options(joinedload(models.User.patient_record)).filter(models.User.username == username).first()
     if user is None:
         raise HTTPException(status_code=404, detail="Không tìm thấy user")
-    return user
+    
+    # Map dữ liệu sang Schema response
+    resp = schemas.UserProfileResponse(
+        user_id=user.user_id,
+        username=user.username,
+        full_name=user.full_name,
+        role=user.role,
+        email=user.email,
+        phone=user.phone,
+        address=user.address,
+        patient_info=None
+    )
+    
+    # Nếu user này liên kết với 1 hồ sơ bệnh nhân, lấy CCCD và BHYT
+    if user.patient_record:
+        resp.patient_info = schemas.PatientInfoSimple(
+            cccd=user.patient_record.cccd,
+            insurance_card=user.patient_record.insurance_card
+        )
+        
+    return resp
+
+
+@app.put("/users/me", response_model=schemas.UserProfileResponse)
+def update_user_me(
+    update_data: schemas.UserProfileUpdate,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    # 1. Xác thực user
+    try:
+        payload = security.jwt.decode(token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
+        username: str = payload.get("sub")
+    except security.jwt.JWTError:
+        raise HTTPException(status_code=401, detail="Token không hợp lệ")
+    
+    user = db.query(models.User).filter(models.User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User không tồn tại")
+
+    # 2. Xử lý đổi mật khẩu (Nếu có gửi lên)
+    if update_data.new_password:
+        if not update_data.current_password:
+             raise HTTPException(status_code=400, detail="Vui lòng nhập mật khẩu hiện tại để xác nhận thay đổi")
+        if not security.verify_password(update_data.current_password, user.password):
+             raise HTTPException(status_code=400, detail="Mật khẩu hiện tại không đúng")
+        
+        # Hash mật khẩu mới
+        user.password = security.pwd_context.hash(update_data.new_password)
+
+    # 3. Kiểm tra trùng username (Nếu đổi username)
+    if update_data.username != user.username:
+        exists = db.query(models.User).filter(models.User.username == update_data.username).first()
+        if exists:
+            raise HTTPException(status_code=400, detail="Tên đăng nhập đã tồn tại")
+        user.username = update_data.username
+
+    # 4. Cập nhật thông tin cơ bản
+    user.email = update_data.email
+    user.phone = update_data.phone
+    user.address = update_data.address
+
+    # 5. Đồng bộ sang bảng Patients (nếu là bệnh nhân) để dữ liệu nhất quán
+    if user.patient_record:
+        user.patient_record.phone = update_data.phone
+        user.patient_record.address = update_data.address
+        # Email và CCCD thường ít đổi, hoặc cần quy trình riêng, ở đây ta sync Phone/Address
+
+    db.commit()
+    db.refresh(user)
+
+    # Trả về kết quả mới
+    resp = schemas.UserProfileResponse.model_validate(user) # Pydantic v2 style
+    if user.patient_record:
+        resp.patient_info = schemas.PatientInfoSimple(
+            cccd=user.patient_record.cccd,
+            insurance_card=user.patient_record.insurance_card
+        )
+    return resp
 
 # --- API 3: Thêm bệnh nhân mới ---
 from typing import List, Optional

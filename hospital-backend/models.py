@@ -19,9 +19,11 @@ class User(Base):
     # Thêm cột mới
     email = Column(String(100), unique=True, nullable=True)
     phone = Column(String(15), nullable=True)
+    address = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     reset_token = Column(String(10), nullable=True)   # Lưu mã OTP
     reset_token_exp = Column(DateTime, nullable=True) # Lưu thời gian hết hạn
+    patient_record = relationship("Patient", back_populates="account", uselist=False)
 
 # Bảng Patients
 class Patient(Base):
@@ -51,6 +53,8 @@ class Patient(Base):
     
     # Quan hệ 1-n: Một bệnh nhân có nhiều lượt khám
     visits = relationship("Visit", back_populates="patient")
+    account_id = Column(Integer, ForeignKey("Users.user_id"), nullable=True, unique=True)
+    account = relationship("User", back_populates="patient_record")
 
 # Bảng Medicines (Kho thuốc)
 class Medicine(Base):

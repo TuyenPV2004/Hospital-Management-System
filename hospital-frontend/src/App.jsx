@@ -1,6 +1,8 @@
-// src/App.jsx
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
+import MainLayout from './components/MainLayout'; // Import Layout vừa tạo
+
+// ... giữ nguyên các import Pages ...
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -15,82 +17,142 @@ import AdminUsers from './pages/AdminUsers';
 import InventoryImport from './pages/InventoryImport';
 import InventoryAlerts from './pages/InventoryAlerts';
 import InpatientMap from './pages/InpatientMap';
+import Profile from './pages/Profile'; // Import trang Profile mới
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* ===== PUBLIC ROUTES (Không cần token) ===== */}
+        {/* ===== PUBLIC ROUTES (Không có Navbar) ===== */}
         <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         
-        {/* ===== PROTECTED ROUTES (Cần kiểm tra quyền) ===== */}
-        {/* Dashboard - Tất cả người dùng đã đăng nhập */}
+        {/* ===== PROTECTED ROUTES (Có Navbar) ===== */}
+        {/* Chúng ta bọc MainLayout quanh Component bên trong ProtectedRoute */}
+        
         <Route 
           path="/dashboard" 
-          element={<ProtectedRoute allowedRoles={["ADMIN", "DOCTOR", "NURSE", "PATIENT", "TECHNICIAN"]} Component={Dashboard} />} 
+          element={
+            <ProtectedRoute 
+              allowedRoles={["ADMIN", "DOCTOR", "NURSE", "PATIENT", "TECHNICIAN"]} 
+              Component={() => <MainLayout><Dashboard /></MainLayout>} 
+            />
+          } 
         />
         
-        {/* Booking - Tất cả người dùng đã đăng nhập */}
+        <Route 
+          path="/profile" 
+          element={
+            <ProtectedRoute 
+              allowedRoles={["ADMIN", "DOCTOR", "NURSE", "PATIENT", "TECHNICIAN"]} 
+              Component={() => <MainLayout><Profile /></MainLayout>} 
+            />
+          } 
+        />
+        
         <Route 
           path="/booking" 
-          element={<ProtectedRoute allowedRoles={["ADMIN", "DOCTOR", "NURSE", "PATIENT"]} Component={Booking} />} 
+          element={
+            <ProtectedRoute 
+              allowedRoles={["ADMIN", "DOCTOR", "NURSE", "PATIENT"]} 
+              Component={() => <MainLayout><Booking /></MainLayout>} 
+            />
+          } 
         />
+
+        {/* ... Lặp lại cách bọc MainLayout cho các route còn lại ... */}
         
-        {/* Reception - CHỈ NURSE & ADMIN */}
         <Route 
           path="/reception" 
-          element={<ProtectedRoute allowedRoles={["ADMIN", "NURSE"]} Component={Reception} />} 
+          element={
+            <ProtectedRoute 
+              allowedRoles={["ADMIN", "NURSE"]} 
+              Component={() => <MainLayout><Reception /></MainLayout>} 
+            />
+          } 
         />
         
-        {/* Doctor Room - CHỈ DOCTOR & ADMIN */}
         <Route 
           path="/doctor" 
-          element={<ProtectedRoute allowedRoles={["ADMIN", "DOCTOR"]} Component={DoctorRoom} />} 
+          element={
+            <ProtectedRoute 
+              allowedRoles={["ADMIN", "DOCTOR"]} 
+              Component={() => <MainLayout><DoctorRoom /></MainLayout>} 
+            />
+          } 
         />
         
-        {/* Pharmacy - CHỈ ADMIN & NURSE */}
         <Route 
           path="/pharmacy" 
-          element={<ProtectedRoute allowedRoles={["ADMIN", "NURSE"]} Component={Pharmacy} />} 
+          element={
+            <ProtectedRoute 
+              allowedRoles={["ADMIN", "NURSE"]} 
+              Component={() => <MainLayout><Pharmacy /></MainLayout>} 
+            />
+          } 
         />
-        
-        {/* Payment - CHỈ ADMIN */}
+
         <Route 
           path="/payment" 
-          element={<ProtectedRoute allowedRoles={["ADMIN"]} Component={Payment} />} 
+          element={
+            <ProtectedRoute 
+              allowedRoles={["ADMIN"]} 
+              Component={() => <MainLayout><Payment /></MainLayout>} 
+            />
+          } 
         />
         
-        {/* Admin Reports - CHỈ ADMIN */}
         <Route 
           path="/admin" 
-          element={<ProtectedRoute allowedRoles={["ADMIN"]} Component={AdminReport} />} 
+          element={
+            <ProtectedRoute 
+              allowedRoles={["ADMIN"]} 
+              Component={() => <MainLayout><AdminReport /></MainLayout>} 
+            />
+          } 
         />
         
-        {/* Admin Users - CHỈ ADMIN */}
         <Route 
           path="/admin/users" 
-          element={<ProtectedRoute allowedRoles={["ADMIN"]} Component={AdminUsers} />} 
+          element={
+            <ProtectedRoute 
+              allowedRoles={["ADMIN"]} 
+              Component={() => <MainLayout><AdminUsers /></MainLayout>} 
+            />
+          } 
         />
-        
-        {/* Inventory Import - CHỈ ADMIN */}
+
         <Route 
           path="/inventory/import" 
-          element={<ProtectedRoute allowedRoles={["ADMIN"]} Component={InventoryImport} />} 
+          element={
+            <ProtectedRoute 
+              allowedRoles={["ADMIN"]} 
+              Component={() => <MainLayout><InventoryImport /></MainLayout>} 
+            />
+          } 
         />
-        
-        {/* Inventory Alerts - CHỈ ADMIN */}
+
         <Route 
           path="/inventory/alerts" 
-          element={<ProtectedRoute allowedRoles={["ADMIN"]} Component={InventoryAlerts} />} 
+          element={
+            <ProtectedRoute 
+              allowedRoles={["ADMIN"]} 
+              Component={() => <MainLayout><InventoryAlerts /></MainLayout>} 
+            />
+          } 
         />
-        
-        {/* Inpatient Map - CHỈ ADMIN & NURSE */}
+
         <Route 
           path="/inpatient" 
-          element={<ProtectedRoute allowedRoles={["ADMIN", "NURSE"]} Component={InpatientMap} />} 
+          element={
+            <ProtectedRoute 
+              allowedRoles={["ADMIN", "NURSE"]} 
+              Component={() => <MainLayout><InpatientMap /></MainLayout>} 
+            />
+          } 
         />
+
       </Routes>
     </Router>
   );

@@ -418,3 +418,31 @@ class InventoryAlert(BaseModel):
     min_stock: int
     expiry_date: Optional[date]
     alert_type: str # EXPIRY / LOW_STOCK             
+
+class UserProfileUpdate(BaseModel):
+    username: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    # Mật khẩu là tùy chọn, nếu không đổi thì để null
+    current_password: Optional[str] = None
+    new_password: Optional[str] = None
+
+class PatientInfoSimple(BaseModel):
+    cccd: Optional[str] = None
+    insurance_card: Optional[str] = None
+
+class UserProfileResponse(BaseModel):
+    user_id: int
+    username: str
+    full_name: str
+    role: str
+    email: Optional[str]
+    phone: Optional[str]
+    address: Optional[str]
+    
+    # Thông tin riêng cho Patient (Read-only)
+    patient_info: Optional[PatientInfoSimple] = None
+
+    class Config:
+        from_attributes = True
