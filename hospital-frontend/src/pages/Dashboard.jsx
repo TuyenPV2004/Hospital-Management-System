@@ -5,6 +5,9 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend 
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
+import { 
+  Clock3, TriangleAlert
+} from 'lucide-react';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -177,7 +180,7 @@ const Dashboard = () => {
         <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
           <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-bold text-xs">{user.role}</span>
           <span>|</span>
-          <span className="flex items-center gap-1 font-mono text-gray-700 bg-gray-100 px-2 py-0.5 rounded"> 🕒 {currentTime.toLocaleTimeString('vi-VN', { hour12: false })}
+          <span className="flex items-center gap-1 font-mono text-gray-700 px-2 py-0.5 rounded"> <Clock3 size={16} /> {currentTime.toLocaleTimeString('vi-VN', { hour12: false })}
           </span>
         </div>
       </div>
@@ -185,11 +188,11 @@ const Dashboard = () => {
       {['ADMIN', 'DOCTOR', 'NURSE'].includes(user.role) && (
         <div className="flex gap-2">
           {user.role !== 'DOCTOR' && (
-             <button onClick={() => navigate('/reception')} className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 shadow-sm text-sm">+ Tiếp nhận</button>
+             <button onClick={() => navigate('/reception')} className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 shadow-sm text-sm">Tiếp nhận</button>
           )}
-          <button onClick={() => navigate('/booking')} className="bg-indigo-600 text-white px-3 py-2 rounded hover:bg-indigo-700 shadow-sm text-sm">+ Đặt lịch</button>
+          <button onClick={() => navigate('/booking')} className="bg-indigo-600 text-white px-3 py-2 rounded hover:bg-indigo-700 shadow-sm text-sm">Đặt lịch</button>
           {user.role === 'ADMIN' && (
-             <button onClick={() => navigate('/inventory/import')} className="bg-emerald-600 text-white px-3 py-2 rounded hover:bg-emerald-700 shadow-sm text-sm">+ Nhập kho</button>
+             <button onClick={() => navigate('/inventory/import')} className="bg-emerald-600 text-white px-3 py-2 rounded hover:bg-emerald-700 shadow-sm text-sm">Nhập kho</button>
           )}
         </div>
       )}
@@ -254,7 +257,7 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Top Thuốc */}
           <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Top 5 Thuốc tiêu thụ</h3>
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Top thuốc tiêu thụ nhiều nhất</h3>
             <div className="h-64">
                <ResponsiveContainer width="100%" height="100%">
                  <BarChart layout="vertical" data={topMedicines} margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
@@ -276,7 +279,7 @@ const Dashboard = () => {
                  </div>
                  <div className="flex items-end gap-2 mb-2">
                     <span className="text-4xl font-bold text-blue-600">{bedStats.percent}%</span>
-                    <span className="text-gray-500 mb-1">khả dụng</span>
+                    <span className="text-gray-500 mb-1">giường khả dụng</span>
                  </div>
                  <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
                     <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${bedStats.percent}%` }}></div>
@@ -285,7 +288,7 @@ const Dashboard = () => {
               </div>
 
               <div className="bg-white p-6 rounded-lg shadow-sm border border-red-100">
-                 <h3 className="text-lg font-bold text-red-600 mb-3">⚠️ Cảnh báo Hết hạn</h3>
+                 <h3 className="text-lg font-bold text-red-600 mb-3"><TriangleAlert className="inline-block w-5 h-5 mr-1" /> Cảnh báo hết hạn</h3>
                  <div className="max-h-40 overflow-y-auto space-y-2">
                     {expiryAlerts.length > 0 ? expiryAlerts.map(item => (
                         <div key={item.id} className="flex justify-between p-2 bg-red-50 rounded text-sm">
