@@ -1,6 +1,78 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { getPatientServiceResults, getServiceReport } from '../services/api';
+
+// Component hiển thị mẫu in (Ẩn trên giao diện, chỉ hiện khi in hoặc trong Modal)
+const PrintReportTemplate = ({ data, onClose }) => {
+    if (!data) return null;
+
+    const handlePrint = () => {
+        window.print();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 print:static print:bg-white">
+            <div className="bg-white p-8 max-w-2xl w-full rounded shadow-lg max-h-screen overflow-y-auto print:shadow-none print:w-full print:max-w-none print:p-0 print:overflow-visible">
+                {/* Header phiếu in */}
+                <div className="text-center mb-6 border-b pb-4">
+                    <h1 className="text-2xl font-bold uppercase text-blue-800 print:text-black">Phiếu Kết Quả Cận Lâm Sàng</h1>
+                    <p className="text-sm text-gray-600">Bệnh viện Đa Khoa Demo - Hotline: 1900 xxxx</p>
+                </div>
+
+                {/* Thông tin hành chính */}
+                <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
+                    <div><strong>Họ tên:</strong> {data.patient_name}</div>
+                    <div><strong>Năm sinh:</strong> {data.patient_dob} ({data.patient_gender})</div>
+                    <div className="col-span-2"><strong>Địa chỉ:</strong> {data.patient_address}</div>
+                    <div><strong>Bác sĩ chỉ định:</strong> {data.doctor_name}</div>
+                    <div><strong>Ngày chỉ định:</strong> {new Date(data.visit_date).toLocaleString()}</div>
+                </div>
+
+                {/* Kết quả */}
+                <div className="mb-6">
+                    <h3 className="font-bold text-lg mb-2 border-l-4 border-blue-500 pl-2 print:border-black">
+                        {data.service_name}
+                    </h3>
+                    
+                    {/* Nếu có ảnh (X-Quang/Siêu âm) */}
+                    {data.image_url && (
+                        <div className="mb-4 flex justify-center">
+                            <img src={data.image_url} alt="Ket qua" className="max-h-64 object-contain border" />
+                        </div>
+                    )}
+
+                    <div className="bg-gray-50 p-4 rounded print:bg-transparent print:border">
+                        <p className="whitespace-pre-line font-mono text-sm">{data.result_data}</p>
+                    </div>
+                </div>
+
+                {/* Kết luận */}
+                <div className="mb-8">
+                    <strong>Kết luận:</strong> 
+                    <p className="text-red-600 font-bold mt-1 print:text-black">{data.conclusion || "Chưa có kết luận"}</p>
+                </div>
+
+                {/* Chữ ký */}
+                <div className="flex justify-end mt-10">
+                    <div className="text-center w-48">
+                        <p className="italic mb-4">Ngày ... tháng ... năm ...</p>
+                        <p className="font-bold">Kỹ thuật viên / Bác sĩ</p>
+                        {/* Placeholder chữ ký */}
+                        <div className="h-16"></div>
+                        <p className="font-bold uppercase">{data.technician_name}</p>
+                    </div>
+                </div>
+
+                {/* Nút thao tác (Sẽ ẩn khi in) */}
+                <div className="mt-6 flex justify-end gap-3 print:hidden border-t pt-4">
+                    <button onClick={onClose} className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Đóng</button>
+                    <button onClick={handlePrint} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">🖨️ In Kết Quả</button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const PatientDetail = () => {
   const { id } = useParams();
@@ -13,6 +85,11 @@ const PatientDetail = () => {
   // State cho Modal Edit
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({});
+  
+  // State cho Tabs và CLS
+  const [activeTab, setActiveTab] = useState('info');
+  const [clsResults, setClsResults] = useState([]);
+  const [reportData, setReportData] = useState(null);
 
   useEffect(() => {
     fetchDetail();
@@ -55,6 +132,33 @@ const PatientDetail = () => {
 
   const handleInputChange = (e) => {
     setEditForm({ ...editForm, [e.target.name]: e.target.value });
+  };
+
+  // Hàm fetch lịch sử CLS
+  const fetchClsHistory = async () => {
+    try {
+      const data = await getPatientServiceResults(id);
+      setClsResults(data);
+    } catch (error) {
+      console.error("Lỗi tải lịch sử CLS:", error);
+    }
+  };
+
+  // useEffect cho CLS tab
+  useEffect(() => {
+    if (activeTab === 'cls') {
+      fetchClsHistory();
+    }
+  }, [activeTab, id]);
+
+  // Hàm xử lý xem/in báo cáo
+  const handleViewReport = async (resultId) => {
+    try {
+      const data = await getServiceReport(resultId);
+      setReportData(data);
+    } catch (error) {
+      alert("Không thể tải báo cáo chi tiết");
+    }
   };
 
   if (loading) return <div className="p-10 text-center animate-pulse text-gray-500">Đang tải hồ sơ bệnh án...</div>;
@@ -132,8 +236,25 @@ const PatientDetail = () => {
          </div>
       </div>
 
-      {/* 3. HISTORY TIMELINE (Lịch sử chi tiết) */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+      {/* 2.5. TABS NAVIGATION */}
+      <div className="flex border-b bg-white rounded-t-xl">
+        <button 
+          className={`px-6 py-3 font-medium transition-colors ${activeTab === 'info' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+          onClick={() => setActiveTab('info')}
+        >
+          📋 Thông tin & Lịch sử
+        </button>
+        <button 
+          className={`px-6 py-3 font-medium transition-colors ${activeTab === 'cls' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+          onClick={() => setActiveTab('cls')}
+        >
+          🧪 Kết quả CLS
+        </button>
+      </div>
+
+      {/* 3. HISTORY TIMELINE (Lịch sử chi tiết) - Hiển thị khi tab info */}
+      {activeTab === 'info' && (
+      <div className="bg-white p-6 rounded-b-xl rounded-tr-xl shadow-sm border border-gray-100 border-t-0">
          <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
             🏥 Lịch sử khám bệnh ({history.length})
          </h2>
@@ -212,8 +333,62 @@ const PatientDetail = () => {
             )}
          </div>
       </div>
+      )}
 
-      {/* 4. MODAL EDIT (Ẩn hiện theo state) */}
+      {/* 4. TAB CLS - Kết quả Cận Lâm Sàng */}
+      {activeTab === 'cls' && (
+        <div className="bg-white p-6 rounded-b-xl rounded-tr-xl shadow-sm border border-gray-100 border-t-0">
+          <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+            🧪 Lịch sử Cận Lâm Sàng
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-auto">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="p-3 text-left">Ngày thực hiện</th>
+                  <th className="p-3 text-left">Dịch vụ</th>
+                  <th className="p-3 text-left">Loại</th>
+                  <th className="p-3 text-left">KTV thực hiện</th>
+                  <th className="p-3 text-left">Kết luận</th>
+                  <th className="p-3 text-center">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {clsResults.map((item) => (
+                  <tr key={item.request_id} className="border-b hover:bg-gray-50">
+                    <td className="p-3">{item.performed_at ? new Date(item.performed_at).toLocaleDateString('vi-VN') : '-'}</td>
+                    <td className="p-3 font-medium">{item.service_name}</td>
+                    <td className="p-3">
+                      <span className={`px-2 py-1 text-xs rounded ${item.service_type === 'LAB' ? 'bg-purple-100 text-purple-800' : 'bg-orange-100 text-orange-800'}`}>
+                        {item.service_type}
+                      </span>
+                    </td>
+                    <td className="p-3">{item.technician_name || '-'}</td>
+                    <td className="p-3 max-w-xs truncate" title={item.conclusion}>{item.conclusion || '-'}</td>
+                    <td className="p-3 text-center">
+                      {item.status === 'COMPLETED' ? (
+                        <button 
+                          onClick={() => handleViewReport(item.request_id)}
+                          className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 flex items-center gap-1 mx-auto"
+                        >
+                          🖨️ In KQ
+                        </button>
+                      ) : (
+                        <span className="text-gray-400 text-sm italic">Đang chờ...</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {clsResults.length === 0 && (
+                  <tr><td colSpan="6" className="p-4 text-center text-gray-500">Chưa có kết quả nào</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* 5. MODAL EDIT (Ẩn hiện theo state) */}
       {isEditOpen && (
          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -249,6 +424,11 @@ const PatientDetail = () => {
                </form>
             </div>
          </div>
+      )}
+
+      {/* 6. MODAL IN BÁO CÁO */}
+      {reportData && (
+        <PrintReportTemplate data={reportData} onClose={() => setReportData(null)} />
       )}
     </div>
   );

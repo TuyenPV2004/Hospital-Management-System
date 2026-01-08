@@ -63,4 +63,33 @@ export const deleteAppointment = async (id) => {
     return response.data;
 };
 
+// --- MODULE CẬN LÂM SÀNG (CLS) ---
+
+// 1. Sửa chỉ định (Dành cho Bác sĩ, chỉ sửa được khi PENDING)
+export const updateServiceRequest = async (requestId, data) => {
+    // data structure: { service_id: int, quantity: int }
+    const response = await api.put(`/service-requests/${requestId}`, data);
+    return response.data;
+};
+
+// 2. Hủy chỉ định (Soft delete)
+export const deleteServiceRequest = async (requestId) => {
+    const response = await api.delete(`/service-requests/${requestId}`);
+    return response.data;
+};
+
+// 3. Lấy lịch sử kết quả CLS của bệnh nhân
+export const getPatientServiceResults = async (patientId, type = null) => {
+    let url = `/patients/${patientId}/service-results`;
+    if (type) url += `?service_type=${type}`; // type = 'LAB' hoặc 'IMAGING'
+    const response = await api.get(url);
+    return response.data;
+};
+
+// 4. Lấy dữ liệu chi tiết để in báo cáo
+export const getServiceReport = async (resultId) => {
+    const response = await api.get(`/service-results/${resultId}/report`);
+    return response.data;
+};
+
 export default api;

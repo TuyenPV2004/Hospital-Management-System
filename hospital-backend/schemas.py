@@ -533,3 +533,50 @@ class AppointmentDetailResponse(AppointmentResponse):
     doctor_full_name: Optional[str] = None
     patient_full_name: Optional[str] = None
     patient_phone: Optional[str] = None
+    
+    
+# --- BỔ SUNG VÀO schemas.py ---
+
+# 1. Schema Chỉnh sửa Yêu cầu Dịch vụ (Chỉ định)
+class ServiceRequestUpdate(BaseModel):
+    service_id: Optional[int] = None
+    quantity: Optional[int] = None
+    # Lưu ý: Không cho sửa status ở đây, status thay đổi theo quy trình xử lý
+
+# 2. Schema Lịch sử Dịch vụ Bệnh nhân (Xem danh sách kết quả)
+class PatientServiceHistoryItem(BaseModel):
+    request_id: int
+    service_name: str
+    service_type: str # LAB / IMAGING
+    performed_at: Optional[datetime]
+    technician_name: Optional[str] = None
+    conclusion: Optional[str] = None
+    image_url: Optional[str] = None
+    status: str
+    
+    class Config:
+        from_attributes = True
+
+# 3. Schema Báo cáo Kết quả (Dùng cho trang In/Print View)
+class ServiceReportResponse(BaseModel):
+    # Thông tin hành chính
+    patient_name: str
+    patient_dob: date
+    patient_gender: str
+    patient_address: Optional[str]
+    
+    # Thông tin chỉ định
+    doctor_name: str
+    visit_date: datetime
+    service_name: str
+    service_price: float
+    
+    # Kết quả chuyên môn
+    technician_name: Optional[str]
+    performed_at: Optional[datetime]
+    result_data: Optional[str]
+    image_url: Optional[str]
+    conclusion: Optional[str]
+    
+    class Config:
+        from_attributes = True

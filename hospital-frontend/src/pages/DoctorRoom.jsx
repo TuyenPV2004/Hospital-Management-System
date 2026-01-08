@@ -1,6 +1,7 @@
 // src/pages/DoctorRoom.jsx
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+import ServiceRequestManager from '../components/ServiceRequestManager';
 
 const DoctorRoom = () => {
     // --- STATE ---
@@ -377,45 +378,30 @@ const DoctorRoom = () => {
                                 </select>
                             </div>
 
-                            {orderedServices.length > 0 ? (
-                                <div className="bg-white rounded border border-gray-200 overflow-hidden">
-                                    <table className="w-full text-sm">
-                                        <thead className="bg-gray-100 border-b">
-                                            <tr>
-                                                <th className="p-2 text-left">Tên Dịch vụ</th>
-                                                <th className="p-2 text-center">Trạng thái</th>
-                                                <th className="p-2">Kết quả</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {orderedServices.map(req => (
-                                                <tr key={req.request_id} className="border-b hover:bg-gray-50">
-                                                    <td className="p-2 font-medium text-gray-700">{req.service_name}</td>
-                                                    <td className="p-2 text-center">
-                                                        <span className={`px-2 py-1 rounded text-xs text-white font-bold ${
-                                                            req.status === 'COMPLETED' ? 'bg-green-500' : 
-                                                            req.status === 'IN_PROGRESS' ? 'bg-blue-500' : 
-                                                            'bg-orange-400'
-                                                        }`}>
-                                                            {req.status}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-2 text-xs">
-                                                        {req.result ? (
-                                                            <div className="space-y-1">
-                                                                <p className="font-bold text-blue-600">{req.result.conclusion}</p>
-                                                                <p className="text-gray-600 line-clamp-2">{req.result.result_data}</p>
-                                                                {req.result.image_url && <a href={req.result.image_url} target="_blank" rel="noreferrer" className="text-blue-500 underline block">📷 Xem ảnh</a>}
-                                                            </div>
-                                                        ) : <span className="text-gray-400 italic">Chưa có KQ</span>}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                            {/* Sử dụng ServiceRequestManager cho phép Sửa/Hủy chỉ định */}
+                            <ServiceRequestManager 
+                                requests={orderedServices} 
+                                onRefresh={fetchOrderedServices} 
+                            />
+                            
+                            {/* Hiển thị kết quả chi tiết (nếu có) */}
+                            {orderedServices.filter(req => req.result).length > 0 && (
+                                <div className="mt-4 bg-blue-50 rounded border border-blue-200 p-3">
+                                    <h4 className="font-bold text-blue-800 mb-2">Kết quả đã có:</h4>
+                                    <div className="space-y-2">
+                                        {orderedServices.filter(req => req.result).map(req => (
+                                            <div key={req.request_id} className="bg-white p-2 rounded border">
+                                                <p className="font-medium text-gray-700">{req.service_name}</p>
+                                                <p className="text-sm font-bold text-blue-600 mt-1">{req.result.conclusion}</p>
+                                                <p className="text-xs text-gray-600 line-clamp-2">{req.result.result_data}</p>
+                                                {req.result.image_url && (
+                                                    <a href={req.result.image_url} target="_blank" rel="noreferrer" 
+                                                       className="text-blue-500 underline text-xs block mt-1">📷 Xem ảnh</a>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                            ) : (
-                                <p className="text-gray-400 text-sm italic text-center py-4 bg-gray-50 rounded">Chưa chỉ định dịch vụ nào</p>
                             )}
                         </div>
                     </div>

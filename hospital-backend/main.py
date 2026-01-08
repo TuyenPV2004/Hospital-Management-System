@@ -1667,3 +1667,160 @@ def delete_appointment(
     db.delete(appt)
     db.commit()
     return {"message": "Đã xóa lịch hẹn khỏi hệ thống"}
+
+# --- MAIN.PY: MODULE QUẢN LÝ DỊCH VỤ CẬN LÂM SÀNG (CLS) ---
+
+# A. CHỈNH SỬA & XÓA CHỈ ĐỊNH (QUẢN LÝ CHỈ ĐỊNH)
+
+# 1. Sửa chỉ định (Chỉ khi PENDING)
+@app.put("/service-requests/{request_id}", response_model=schemas.ServiceRequestResponse)
+def update_service_request(
+    request_id: int,
+    req_update: schemas.ServiceRequestUpdate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["DOCTOR", "ADMIN"]))
+):
+    # Tìm yêu cầu
+    db_req = db.query(models.ServiceRequest).get(request_id)
+    if not db_req:
+        raise HTTPException(status_code=404, detail="Yêu cầu dịch vụ không tồn tại")
+    
+    # Ràng buộc: Chỉ sửa được khi chưa thực hiện (PENDING)
+    if db_req.status != 'PENDING':
+        raise HTTPException(status_code=400, detail="Không thể sửa yêu cầu đã thực hiện hoặc đã hủy")
+
+    # Cập nhật
+    if req_update.service_id:
+        # Check service tồn tại
+        svc = db.query(models.Service).get(req_update.service_id)
+        if not svc:
+            raise HTTPException(status_code=404, detail="Dịch vụ mới không hợp lệ")
+        db_req.service_id = req_update.service_id
+        
+    if req_update.quantity:
+        if req_update.quantity < 1:
+             raise HTTPException(status_code=400, detail="Số lượng phải lớn hơn 0")
+        db_req.quantity = req_update.quantity
+
+    db.commit()
+    db.refresh(db_req)
+    
+    # Map tên để trả về (vì response model cần service_name)
+    db_req.service_name = db_req.service.name
+    db_req.price = db_req.service.price
+    return db_req
+
+# 2. Xóa chỉ định (Soft Delete -> CANCELLED)
+@app.delete("/service-requests/{request_id}")
+def delete_service_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["DOCTOR", "ADMIN"]))
+):
+    db_req = db.query(models.ServiceRequest).get(request_id)
+    if not db_req:
+        raise HTTPException(status_code=404, detail="Yêu cầu không tồn tại")
+        
+    # Ràng buộc
+    if db_req.status != 'PENDING':
+        raise HTTPException(status_code=400, detail="Chỉ có thể hủy các yêu cầu đang chờ")
+        
+    db_req.status = 'CANCELLED'
+    db.commit()
+    return {"message": "Đã hủy yêu cầu dịch vụ"}
+
+
+# B. TRUY XUẤT LỊCH SỬ KẾT QUẢ BỆNH NHÂN
+
+@app.get("/patients/{patient_id}/service-results", response_model=list[schemas.PatientServiceHistoryItem])
+def get_patient_service_results(
+    patient_id: int,
+    service_type: Optional[str] = None, # Filter: LAB, IMAGING
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["DOCTOR", "ADMIN", "PATIENT", "TECHNICIAN"]))
+):
+    # Role Guard cho Patient: Chỉ xem của mình (Logic giả định check ID)
+    # if current_user['role'] == 'PATIENT' and current_user['patient_id'] != patient_id: ...
+    
+    # Query: ServiceRequest (COMPLETED) -> Join Visit -> Join Service -> Join Result
+    query = db.query(models.ServiceRequest).join(models.Visit).join(models.Service).outerjoin(models.ServiceResult).filter(
+        models.Visit.patient_id == patient_id,
+        models.ServiceRequest.status == 'COMPLETED' # Chỉ lấy cái đã có kết quả
+    )
+    
+    if service_type:
+        query = query.filter(models.Service.type == service_type)
+        
+    results = query.order_by(desc(models.ServiceRequest.created_at)).all()
+    
+    # Map data thủ công sang Schema
+    response = []
+    for req in results:
+        # Lấy tên kỹ thuật viên nếu có kết quả
+        tech_name = req.result.technician.full_name if (req.result and req.result.technician) else "Unknown"
+        
+        item = schemas.PatientServiceHistoryItem(
+            request_id=req.request_id,
+            service_name=req.service.name,
+            service_type=req.service.type,
+            performed_at=req.result.performed_at if req.result else None,
+            technician_name=tech_name,
+            conclusion=req.result.conclusion if req.result else None,
+            image_url=req.result.image_url if req.result else None,
+            status=req.status
+        )
+        response.append(item)
+        
+    return response
+
+
+# C. API BÁO CÁO & IN KẾT QUẢ (PRINT VIEW)
+
+@app.get("/service-results/{result_id}/report", response_model=schemas.ServiceReportResponse)
+def get_service_report(
+    result_id: int,
+    db: Session = Depends(get_db),
+    # Ai cũng có thể xem nếu có quyền truy cập hệ thống (Tùy chỉnh role nếu cần chặt chẽ hơn)
+    current_user: dict = Depends(security.check_role(["DOCTOR", "ADMIN", "TECHNICIAN", "NURSE", "PATIENT"]))
+):
+    # 1. Lấy kết quả -> Join ngược lên Request -> Service, Visit -> Patient, Doctor
+    result = db.query(models.ServiceResult).options(
+        joinedload(models.ServiceResult.technician),
+        joinedload(models.ServiceResult.request).joinedload(models.ServiceRequest.service),
+        joinedload(models.ServiceResult.request).joinedload(models.ServiceRequest.doctor),
+        joinedload(models.ServiceResult.request).joinedload(models.ServiceRequest.visit).joinedload(models.Visit.patient)
+    ).get(result_id)
+    
+    if not result:
+        raise HTTPException(status_code=404, detail="Kết quả không tồn tại")
+        
+    req = result.request
+    visit = req.visit
+    patient = visit.patient
+    doctor = req.doctor
+    service = req.service
+    technician = result.technician
+    
+    # 2. Map dữ liệu vào Schema báo cáo
+    report = schemas.ServiceReportResponse(
+        # Patient Info
+        patient_name=patient.full_name,
+        patient_dob=patient.dob,
+        patient_gender=patient.gender,
+        patient_address=patient.address,
+        
+        # Order Info
+        doctor_name=doctor.full_name if doctor else "Unknown Doctor",
+        visit_date=visit.visit_date,
+        service_name=service.name,
+        service_price=float(service.price),
+        
+        # Result Info
+        technician_name=technician.full_name if technician else "Unknown Technician",
+        performed_at=result.performed_at,
+        result_data=result.result_data,
+        image_url=result.image_url,
+        conclusion=result.conclusion
+    )
+    
+    return report
