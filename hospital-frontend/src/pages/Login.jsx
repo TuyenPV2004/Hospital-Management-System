@@ -56,7 +56,7 @@ const Login = () => {
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
             <div className="w-full max-w-md p-8 space-y-6 bg-white rounded shadow-md">
                 <h2 className="text-2xl font-bold text-center text-blue-600">
-                    Hệ thống Bệnh Viện
+                    Hệ thống quản lý bệnh viện
                 </h2>
                 
                 {error && (
@@ -122,7 +122,7 @@ const Login = () => {
                             <span>Ghi nhớ tôi</span>
                         </label>
                         <Link to="/forgot-password" className="text-sm text-blue-500 hover:underline">
-                            Quên mật khẩu?
+                            Quên mật khẩu ?
                         </Link>
                     </div>
                     <button
@@ -133,18 +133,18 @@ const Login = () => {
                     </button>
                     <div className="mt-6 text-center border-t pt-4 space-y-3">
                         <div className="text-gray-600 text-sm space-y-1">
-                            <p>Bạn chưa có tài khoản?</p>
-                            <p>Liên hệ IT/Quản trị viên - Hotline: 0123 456 789</p>
+                            <p>Bạn chưa có tài khoản ?</p>
                         </div>
                         <Link to="/register" className="text-blue-600 font-bold hover:underline block">
-                            Đăng ký khám bệnh ngay
+                            Đăng ký tài khoản
                         </Link>
                         <Link
                             to="/booking"
                             className="inline-block bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition"
                         >
-                            Đặt lịch khám ngay (Không cần đăng nhập)
+                            Đặt lịch khám ngay
                         </Link>
+                        <p>Liên hệ quản trị viên - Hotline: 0123 456 789</p>
                     </div>
                 </form>
             </div>
