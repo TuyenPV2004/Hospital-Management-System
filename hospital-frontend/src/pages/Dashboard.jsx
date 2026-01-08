@@ -173,12 +173,11 @@ const Dashboard = () => {
   const renderHeader = () => (
     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">Xin chào, {user.username}! 👋</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Xin chào, {user.username}!</h1>
         <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
           <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-bold text-xs">{user.role}</span>
           <span>|</span>
-          <span className="flex items-center gap-1 font-mono text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
-            🕒 {currentTime.toLocaleTimeString('vi-VN', { hour12: false })}
+          <span className="flex items-center gap-1 font-mono text-gray-700 bg-gray-100 px-2 py-0.5 rounded"> 🕒 {currentTime.toLocaleTimeString('vi-VN', { hour12: false })}
           </span>
         </div>
       </div>
