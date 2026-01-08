@@ -9,22 +9,15 @@ const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
-  // Hàm giải mã JWT đơn giản để lấy thông tin user từ token
-  const parseJwt = (token) => {
-    try {
-      return JSON.parse(atob(token.split('.')[1]));
-    } catch (e) {
-      return null;
-    }
-  };
-
+  // Giải mã token
   useEffect(() => {
-    // Lấy token từ localStorage hoặc sessionStorage
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (token) {
-      const decoded = parseJwt(token);
-      if (decoded) {
-        setUser({ username: decoded.sub, role: decoded.role });
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setUser({ username: payload.sub, role: payload.role });
+      } catch (e) {
+        console.error("Invalid token");
       }
     }
   }, []);
@@ -35,166 +28,103 @@ const Navbar = () => {
     navigate('/');
   };
 
-  // Định nghĩa các menu item và quyền truy cập
+  // Danh sách menu (giữ nguyên logic phân quyền)
   const menuItems = [
-    { name: 'Dashboard', path: '/dashboard', roles: ['ADMIN', 'DOCTOR', 'NURSE', 'PATIENT', 'TECHNICIAN'] },
-    { name: 'Đặt lịch', path: '/booking', roles: ['ADMIN', 'DOCTOR', 'NURSE', 'PATIENT'] },
-    { name: 'Tiếp đón', path: '/reception', roles: ['ADMIN', 'NURSE'] },
-    { name: 'Phòng khám', path: '/doctor', roles: ['ADMIN', 'DOCTOR'] },
-    { name: 'Kho thuốc', path: '/pharmacy', roles: ['ADMIN', 'NURSE'] },
-    { name: 'Nội trú', path: '/inpatient', roles: ['ADMIN', 'NURSE'] },
-    { name: 'Thanh toán', path: '/payment', roles: ['ADMIN'] },
-    { name: 'Nhân sự', path: '/admin/users', roles: ['ADMIN'] },
-    { name: 'Báo cáo', path: '/admin', roles: ['ADMIN'] },
-    { name: 'Nhập kho', path: '/inventory/import', roles: ['ADMIN'] },
+    { name: 'Dashboard', path: '/dashboard', icon: '🏠', roles: ['ADMIN', 'DOCTOR', 'NURSE', 'PATIENT', 'TECHNICIAN'] },
+    { name: 'Đặt lịch', path: '/booking', icon: '📅', roles: ['ADMIN', 'DOCTOR', 'NURSE', 'PATIENT'] },
+    { name: 'Tiếp đón', path: '/reception', icon: 'desk', roles: ['ADMIN', 'NURSE'] },
+    { name: 'Phòng khám', path: '/doctor', icon: 'stethoscope', roles: ['ADMIN', 'DOCTOR'] },
+    { name: 'Kho thuốc', path: '/pharmacy', icon: '💊', roles: ['ADMIN', 'NURSE'] },
+    { name: 'Nội trú', path: '/inpatient', icon: '🛏️', roles: ['ADMIN', 'NURSE'] },
+    { name: 'Thanh toán', path: '/payment', icon: '💳', roles: ['ADMIN'] },
+    { name: 'Nhân sự', path: '/admin/users', icon: '👥', roles: ['ADMIN'] },
+    { name: 'Báo cáo', path: '/admin', icon: '📊', roles: ['ADMIN'] },
+    { name: 'Nhập kho', path: '/inventory/import', icon: '📥', roles: ['ADMIN'] },
   ];
 
-  // Lọc menu dựa trên role của user hiện tại
   const filteredMenu = menuItems.filter(item => item.roles.includes(user.role));
-
   const isActive = (path) => location.pathname === path;
 
   return (
-    <nav className="bg-white border-b border-gray-200 shadow-sm fixed w-full z-30 top-0 left-0">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          
-          {/* Logo & Desktop Menu */}
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center">
-              <Link to="/dashboard" className="text-2xl font-bold text-blue-600">
-                Hospital<span className="text-gray-700">Manager</span>
-              </Link>
-            </div>
-            <div className="hidden md:ml-6 md:flex md:space-x-4 items-center">
-              {filteredMenu.map((item) => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive(item.path)
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                >
-                  {item.name}
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          {/* User Menu (Right Side) */}
-          <div className="hidden md:flex items-center ml-6">
-            <div className="ml-3 relative">
-              <div>
-                <button
-                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="max-w-xs bg-white flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <span className="sr-only">Open user menu</span>
-                  <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold uppercase">
-                    {user.username.charAt(0)}
-                  </div>
-                  <span className="ml-2 text-gray-700 font-medium">{user.username}</span>
-                  <svg className="ml-1 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </div>
-              
-              {/* Dropdown Menu */}
-              {isUserMenuOpen && (
-                <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
-                  <div className="px-4 py-2 border-b">
-                    <p className="text-sm text-gray-500">Vai trò</p>
-                    <p className="text-sm font-bold text-gray-900">{user.role}</p>
-                  </div>
-                  <Link
-                    to="/profile"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    onClick={() => setIsUserMenuOpen(false)}
-                  >
-                    Thông tin cá nhân
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                  >
-                    Đăng xuất
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Mobile menu button */}
-          <div className="-mr-2 flex items-center md:hidden">
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
-            >
-              <span className="sr-only">Open main menu</span>
-              <svg className={`${isMobileMenuOpen ? 'hidden' : 'block'} h-6 w-6`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-              <svg className={`${isMobileMenuOpen ? 'block' : 'hidden'} h-6 w-6`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
+    <>
+      {/* --- MOBILE TOGGLE BUTTON (Chỉ hiện trên màn hình nhỏ) --- */}
+      <div className="md:hidden fixed top-0 left-0 z-50 p-4 w-full bg-white border-b flex justify-between items-center shadow-sm">
+        <span className="font-bold text-blue-600 text-lg">Hospital Manager</span>
+        <button 
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-2 rounded-md hover:bg-gray-100 focus:outline-none"
+        >
+          {isMobileMenuOpen ? (
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          ) : (
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          )}
+        </button>
       </div>
 
-      {/* Mobile Menu Panel */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden">
-          <div className="pt-2 pb-3 space-y-1">
+      {/* --- SIDEBAR (Thanh dọc bên trái) --- */}
+      <aside className={`
+        fixed top-0 left-0 z-40 w-64 h-screen bg-white border-r border-gray-200 transition-transform duration-300 ease-in-out
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} 
+        md:translate-x-0
+      `}>
+        <div className="h-full flex flex-col">
+          {/* Logo Area */}
+          <div className="h-16 flex items-center justify-center border-b border-gray-200 bg-blue-600">
+             <Link to="/dashboard" className="text-xl font-bold text-white flex items-center gap-2">
+                🏥 <span>Hospital App</span>
+             </Link>
+          </div>
+
+          {/* Menu Items */}
+          <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
             {filteredMenu.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
+                onClick={() => setIsMobileMenuOpen(false)} // Đóng menu khi click trên mobile
+                className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                   isActive(item.path)
-                    ? 'bg-blue-50 border-blue-500 text-blue-700'
-                    : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                    ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600'
+                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                 }`}
-                onClick={() => setIsMobileMenuOpen(false)}
               >
+                <span className="mr-3 text-lg">{item.icon || '•'}</span>
                 {item.name}
               </Link>
             ))}
           </div>
-          <div className="pt-4 pb-4 border-t border-gray-200">
-            <div className="flex items-center px-4">
-              <div className="flex-shrink-0">
-                <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-lg uppercase">
+
+          {/* User Profile Area (Footer của Sidebar) */}
+          <div className="border-t border-gray-200 p-4 bg-gray-50">
+             <div className="flex items-center gap-3 mb-3 cursor-pointer" onClick={() => navigate('/profile')}>
+                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold uppercase shadow-sm">
                   {user.username.charAt(0)}
                 </div>
-              </div>
-              <div className="ml-3">
-                <div className="text-base font-medium text-gray-800">{user.username}</div>
-                <div className="text-sm font-medium text-gray-500">{user.role}</div>
-              </div>
-            </div>
-            <div className="mt-3 space-y-1">
-              <Link
-                to="/profile"
-                className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Thông tin cá nhân
-              </Link>
-              <button
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{user.username}</p>
+                  <p className="text-xs text-gray-500 truncate">{user.role}</p>
+                </div>
+             </div>
+             
+             <button 
                 onClick={handleLogout}
-                className="block w-full text-left px-4 py-2 text-base font-medium text-red-600 hover:text-red-800 hover:bg-red-50"
-              >
+                className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+             >
                 Đăng xuất
-              </button>
-            </div>
+             </button>
           </div>
         </div>
+      </aside>
+
+      {/* Overlay cho Mobile khi mở menu */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        ></div>
       )}
-    </nav>
+    </>
   );
 };
 
