@@ -55,8 +55,8 @@ const Login = () => {
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
             <div className="w-full max-w-md p-8 space-y-6 bg-white rounded shadow-md">
-                <h2 className="text-2xl font-bold text-center text-blue-600">
-                    Hệ thống quản lý bệnh viện
+                <h2 className="text-2xl font-bold text-center text-black">
+                    Hospital Management System
                 </h2>
                 
                 {error && (
@@ -121,13 +121,13 @@ const Login = () => {
                             />
                             <span>Ghi nhớ tôi</span>
                         </label>
-                        <Link to="/forgot-password" className="text-sm text-blue-500 hover:underline">
+                        <Link to="/forgot-password" className="text-sm text-black hover:underline">
                             Quên mật khẩu ?
                         </Link>
                     </div>
                     <button
                         type="submit"
-                        className="w-full px-4 py-2 font-bold text-white bg-blue-600 rounded hover:bg-blue-700"
+                        className="w-full px-4 py-2 font-bold text-white bg-black rounded hover:bg-gray-800 transition"
                     >
                         Đăng Nhập
                     </button>
@@ -135,14 +135,14 @@ const Login = () => {
                         <div className="text-gray-600 text-sm space-y-1">
                             <p>Bạn chưa có tài khoản ?</p>
                         </div>
-                        <Link to="/register" className="text-blue-600 font-bold hover:underline block">
+                        <Link to="/register" className="text-black   font-bold hover:underline block">
                             Đăng ký tài khoản
                         </Link>
                         <Link
                             to="/booking"
-                            className="inline-block bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition"
+                            className="inline-block bg-black text-white px-4 py-2 rounded hover:bg-gray-600 transition"
                         >
-                            Đặt lịch khám ngay
+                            Đặt lịch khám ngay bây giờ
                         </Link>
                         <p>Liên hệ quản trị viên - Hotline: 012345678</p>
                     </div>
