@@ -45,11 +45,11 @@ const ForgotPassword = () => {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-100">
             <div className="bg-white p-8 rounded shadow-md w-full max-w-md">
-                <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Khôi Phục Mật Khẩu</h2>
+                <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Khôi phục mật khẩu</h2>
 
                 {step === 1 ? (
                     <form onSubmit={handleRequestOtp} className="space-y-4">
-                        <p className="text-sm text-gray-600">Nhập email bạn đã dùng để đăng ký tài khoản.</p>
+                        <p className="text-sm text-gray-600">Hãy nhập email bạn dùng để đăng ký tài khoản.</p>
                         <input 
                             type="email" placeholder="Email của bạn" required 
                             className="w-full border p-2 rounded"
@@ -57,7 +57,7 @@ const ForgotPassword = () => {
                         />
                         <button type="submit" disabled={loading}
                             className={`w-full text-white py-2 rounded font-bold ${loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}>
-                            {loading ? 'Đang gửi...' : 'Gửi Mã Xác Thực'}
+                            {loading ? 'Đang gửi...' : 'Gửi mã xác thực OTP'}
                         </button>
                     </form>
                 ) : (
@@ -77,17 +77,17 @@ const ForgotPassword = () => {
                             value={newPassword} onChange={e => setNewPassword(e.target.value)}
                         />
                         <button type="submit" className="w-full bg-green-600 text-white py-2 rounded font-bold hover:bg-green-700">
-                            Đổi Mật Khẩu
+                            Đổi mật khẩu
                         </button>
                         <button type="button" onClick={() => setStep(1)} className="w-full text-gray-500 text-sm mt-2 hover:underline">
-                            Gửi lại mã?
+                            Gửi lại mã ?
                         </button>
                     </form>
                 )}
                 
                 <div className="text-center mt-6">
                     <button onClick={() => navigate('/')} className="text-sm text-blue-600 hover:underline">
-                        Quay lại Đăng nhập
+                        Quay lại trang đăng nhập
                     </button>
                 </div>
             </div>
