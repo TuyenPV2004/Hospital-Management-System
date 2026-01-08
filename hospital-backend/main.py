@@ -1824,3 +1824,296 @@ def get_service_report(
     )
     
     return report
+
+
+# --- MAIN.PY: MODULE QUẢN LÝ NỘI TRÚ (FULL) ---
+
+# A. QUẢN LÝ DANH SÁCH & TRẠNG THÁI
+
+# 1. Lấy danh sách nội trú (Filter theo khoa hoặc trạng thái)
+@app.get("/inpatients", response_model=list[schemas.InpatientResponse])
+def get_inpatients(
+    status: Optional[str] = None, # 'ACTIVE'
+    department_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN", "DOCTOR", "NURSE"]))
+):
+    query = db.query(models.InpatientRecord).join(models.Patient).options(
+        joinedload(models.InpatientRecord.patient)
+    )
+    
+    if status:
+        query = query.filter(models.InpatientRecord.status == status)
+    
+    # Filter theo Department phức tạp hơn vì phải join qua BedAllocation -> Bed -> Room -> Dept
+    # Logic: Tìm các record có allocation cuối cùng thuộc department_id
+    if department_id:
+        query = query.join(models.BedAllocation).join(models.Bed).join(models.Room).filter(
+            models.Room.department_id == department_id,
+            models.BedAllocation.check_out_time == None # Chỉ tính giường đang nằm
+        )
+
+    results = query.order_by(desc(models.InpatientRecord.admission_date)).all()
+    
+    # Map data
+    response = []
+    for r in results:
+        # Tìm giường hiện tại
+        current_alloc = db.query(models.BedAllocation).filter(
+            models.BedAllocation.inpatient_id == r.inpatient_id,
+            models.BedAllocation.check_out_time == None
+        ).join(models.Bed).first()
+        
+        bed_num = current_alloc.bed.bed_number if current_alloc else "Chờ xếp giường"
+        
+        item = schemas.InpatientResponse.from_orm(r)
+        item.patient_name = r.patient.full_name
+        item.bed_number = bed_num
+        response.append(item)
+        
+    return response
+
+# 2. Chi tiết hồ sơ nội trú (Daily Orders + Bed History)
+@app.get("/inpatients/{inpatient_id}", response_model=schemas.InpatientDetailResponse)
+def get_inpatient_detail(inpatient_id: int, db: Session = Depends(get_db)):
+    record = db.query(models.InpatientRecord).get(inpatient_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Hồ sơ không tồn tại")
+        
+    # Map cơ bản
+    resp = schemas.InpatientDetailResponse.from_orm(record)
+    resp.patient_name = record.patient.full_name
+    
+    # Lấy tên bác sĩ điều trị
+    doc = db.query(models.User).get(record.treating_doctor_id)
+    resp.treating_doctor_name = doc.full_name if doc else "Unknown"
+
+    # 1. Get Daily Orders
+    orders = db.query(models.DailyOrder).filter(
+        models.DailyOrder.inpatient_id == inpatient_id
+    ).order_by(desc(models.DailyOrder.date)).all()
+    
+    order_list = []
+    for o in orders:
+        od = schemas.DailyOrderResponse.from_orm(o)
+        od.doctor_name = o.doctor.full_name if o.doctor else "Unknown"
+        order_list.append(od)
+    resp.daily_orders = order_list
+
+    # 2. Get Bed History & Calculate Fee
+    allocs = db.query(models.BedAllocation).filter(
+        models.BedAllocation.inpatient_id == inpatient_id
+    ).order_by(models.BedAllocation.check_in_time).all()
+    
+    bed_hist = []
+    total_bed_fee = 0
+    now = datetime.now()
+    
+    for a in allocs:
+        # Tính tiền từng giai đoạn
+        end_time = a.check_out_time if a.check_out_time else now
+        duration = end_time - a.check_in_time
+        # Logic tính ngày: Làm tròn lên, tối thiểu 1 ngày
+        days = max(1, duration.days + (1 if duration.seconds > 0 else 0))
+        # Hoặc tính chính xác hơn: days = duration.total_seconds() / 86400 (nếu muốn tính lẻ)
+        # Ở đây dùng logic đơn giản: count days
+        
+        fee = days * float(a.price_per_day)
+        total_bed_fee += fee
+        
+        # Get room info
+        bed = db.query(models.Bed).options(joinedload(models.Bed.room)).get(a.bed_id)
+        
+        bed_hist.append(schemas.BedAllocationResponse(
+            allocation_id=a.allocation_id,
+            bed_number=bed.bed_number,
+            room_number=bed.room.room_number,
+            check_in_time=a.check_in_time,
+            check_out_time=a.check_out_time,
+            price_per_day=a.price_per_day,
+            total_price=fee
+        ))
+        
+    resp.bed_history = bed_hist
+    resp.current_bed_fee = total_bed_fee
+    
+    return resp
+
+# 3. Cập nhật trạng thái nhanh
+@app.patch("/inpatients/{inpatient_id}/status")
+def update_inpatient_status(
+    inpatient_id: int,
+    status_update: schemas.InpatientUpdate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["DOCTOR", "ADMIN", "NURSE"]))
+):
+    rec = db.query(models.InpatientRecord).get(inpatient_id)
+    if not rec: raise HTTPException(status_code=404)
+    
+    if status_update.status:
+        rec.status = status_update.status
+    if status_update.treating_doctor_id:
+        rec.treating_doctor_id = status_update.treating_doctor_id
+        
+    db.commit()
+    return {"message": "Đã cập nhật trạng thái"}
+
+
+# B. THEO DÕI DIỄN TIẾN (DAILY ORDERS)
+
+@app.post("/inpatients/{inpatient_id}/daily-orders")
+def create_daily_order(
+    inpatient_id: int,
+    order: schemas.DailyOrderCreate,
+    db: Session = Depends(get_db),
+    # Giả sử token có chứa user_id (Bác sĩ/Y tá)
+    token: str = Depends(oauth2_scheme) 
+):
+    # Decode token lấy doctor_id (Logic giả lập)
+    # user_id = decode_token(token)['sub'] ...
+    current_doctor_id = 2 # Hardcode for demo
+    
+    new_order = models.DailyOrder(
+        inpatient_id=inpatient_id,
+        doctor_id=current_doctor_id,
+        date=date.today(),
+        progress_note=order.progress_note,
+        doctor_instruction=order.doctor_instruction,
+        nurse_notes=order.nurse_notes,
+        vitals=order.vitals
+    )
+    db.add(new_order)
+    db.commit()
+    return {"message": "Đã lưu diễn tiến bệnh"}
+
+
+# C. CHUYỂN GIƯỜNG (BED TRANSFER - TRANSACTION)
+
+@app.post("/inpatients/{inpatient_id}/transfer-bed")
+def transfer_bed(
+    inpatient_id: int,
+    req: schemas.BedTransferRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["NURSE", "ADMIN"]))
+):
+    # 1. Kiểm tra giường mới
+    new_bed = db.query(models.Bed).get(req.new_bed_id)
+    if not new_bed or new_bed.status != 'AVAILABLE':
+        raise HTTPException(status_code=400, detail="Giường mới không khả dụng")
+
+    # 2. Tìm phân bổ giường hiện tại
+    current_alloc = db.query(models.BedAllocation).filter(
+        models.BedAllocation.inpatient_id == inpatient_id,
+        models.BedAllocation.check_out_time == None
+    ).first()
+    
+    if not current_alloc:
+        raise HTTPException(status_code=400, detail="Bệnh nhân chưa có giường (Lỗi dữ liệu)")
+
+    # --- BẮT ĐẦU TRANSACTION NGẦM ĐỊNH (SQLAlchemy Session) ---
+    try:
+        now = datetime.now()
+        
+        # 3. Checkout giường cũ
+        current_alloc.check_out_time = now
+        
+        # Trả giường cũ về AVAILABLE
+        old_bed = db.query(models.Bed).get(current_alloc.bed_id)
+        old_bed.status = 'AVAILABLE' 
+        
+        # 4. Checkin giường mới
+        new_room = db.query(models.Room).get(new_bed.room_id)
+        new_alloc = models.BedAllocation(
+            inpatient_id=inpatient_id,
+            bed_id=new_bed.bed_id,
+            check_in_time=now,
+            price_per_day=new_room.base_price # Lấy giá của phòng mới
+        )
+        db.add(new_alloc)
+        
+        # Update trạng thái giường mới
+        new_bed.status = 'OCCUPIED'
+        
+        db.commit() # Commit tất cả cùng lúc
+        return {"message": f"Đã chuyển sang giường {new_bed.bed_number}"}
+        
+    except Exception as e:
+        db.rollback() # Hoàn tác nếu lỗi
+        raise HTTPException(status_code=500, detail=f"Lỗi chuyển giường: {str(e)}")
+
+
+# D. TÍNH TIỀN CHI TIẾT (BILLING PREVIEW)
+
+@app.get("/inpatients/{inpatient_id}/billing-preview", response_model=schemas.InpatientBillingPreview)
+def preview_inpatient_billing(
+    inpatient_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(security.check_role(["ADMIN", "DOCTOR"]))
+):
+    record = db.query(models.InpatientRecord).get(inpatient_id)
+    if not record: raise HTTPException(status_code=404)
+    
+    # 1. TÍNH TIỀN GIƯỜNG (Lặp lại logic ở trên hoặc tách hàm)
+    allocs = db.query(models.BedAllocation).filter(models.BedAllocation.inpatient_id == inpatient_id).all()
+    bed_total = 0
+    bed_details = []
+    now = datetime.now()
+    
+    for a in allocs:
+        end = a.check_out_time if a.check_out_time else now
+        days = max(1, (end - a.check_in_time).days + (1 if (end - a.check_in_time).seconds > 0 else 0))
+        cost = days * float(a.price_per_day)
+        bed_total += cost
+        
+        bed_obj = db.query(models.Bed).get(a.bed_id)
+        bed_details.append({
+            "bed": bed_obj.bed_number,
+            "days": days,
+            "price": float(a.price_per_day),
+            "total": cost
+        })
+
+    # 2. TÍNH TIỀN THUỐC & DỊCH VỤ
+    # Logic: Tìm các Visits trong khoảng thời gian nằm viện
+    # Giả sử InpatientRecord không link trực tiếp Visit, ta query Visit theo time range
+    discharge_time = record.discharge_date if record.discharge_date else now
+    
+    visits = db.query(models.Visit).filter(
+        models.Visit.patient_id == record.patient_id,
+        models.Visit.visit_date >= record.admission_date,
+        models.Visit.visit_date <= discharge_time
+    ).all()
+    
+    med_total = 0
+    med_details = []
+    srv_total = 0
+    srv_details = []
+    
+    for v in visits:
+        # Thuốc
+        for p in v.prescriptions:
+            med = db.query(models.Medicine).get(p.medicine_id)
+            cost = p.quantity * float(med.price)
+            med_total += cost
+            med_details.append({"name": med.name, "qty": p.quantity, "total": cost})
+            
+        # Dịch vụ
+        for req in v.service_requests:
+            if req.status != 'CANCELLED':
+                srv = req.service
+                cost = req.quantity * float(srv.price)
+                srv_total += cost
+                srv_details.append({"name": srv.name, "qty": req.quantity, "total": cost})
+
+    return {
+        "inpatient_id": inpatient_id,
+        "patient_name": record.patient.full_name,
+        "admission_date": record.admission_date,
+        "bed_fee_total": bed_total,
+        "medicine_fee_total": med_total,
+        "service_fee_total": srv_total,
+        "total_amount": bed_total + med_total + srv_total,
+        "bed_details": bed_details,
+        "medicine_details": med_details,
+        "service_details": srv_details
+    }

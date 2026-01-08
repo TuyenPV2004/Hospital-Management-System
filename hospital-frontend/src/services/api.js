@@ -92,4 +92,45 @@ export const getServiceReport = async (resultId) => {
     return response.data;
 };
 
+// --- MODULE NỘI TRÚ (INPATIENT) ---
+
+// 1. Lấy danh sách bệnh nhân nội trú
+export const getInpatients = async (filters = {}) => {
+    // filters: { status: 'ACTIVE', department_id: 1 }
+    const params = new URLSearchParams(filters).toString();
+    const response = await api.get(`/inpatients?${params}`);
+    return response.data;
+};
+
+// 2. Lấy chi tiết hồ sơ (kèm diễn tiến và lịch sử giường)
+export const getInpatientDetail = async (id) => {
+    const response = await api.get(`/inpatients/${id}`);
+    return response.data;
+};
+
+// 3. Tạo diễn tiến hàng ngày (Daily Order)
+export const createDailyOrder = async (id, data) => {
+    const response = await api.post(`/inpatients/${id}/daily-orders`, data);
+    return response.data;
+};
+
+// 4. Chuyển giường
+export const transferBed = async (id, data) => {
+    // data: { new_bed_id: 123, reason: "..." }
+    const response = await api.post(`/inpatients/${id}/transfer-bed`, data);
+    return response.data;
+};
+
+// 5. Xem trước viện phí
+export const getBillingPreview = async (id) => {
+    const response = await api.get(`/inpatients/${id}/billing-preview`);
+    return response.data;
+};
+
+// 6. Lấy sơ đồ giường (Để chọn giường trống khi chuyển)
+export const getBedMap = async () => {
+    const response = await api.get('/beds/map');
+    return response.data;
+};
+
 export default api;

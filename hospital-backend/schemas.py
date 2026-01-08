@@ -580,3 +580,75 @@ class ServiceReportResponse(BaseModel):
     
     class Config:
         from_attributes = True
+        
+# --- BỔ SUNG VÀO schemas.py ---
+
+# --- MODULE NỘI TRÚ (INPATIENT) ---
+
+# 1. Cập nhật thông tin/trạng thái bệnh nhân
+class InpatientUpdate(BaseModel):
+    status: Optional[str] = None # ACTIVE, DISCHARGED, TRANSFERRED
+    treating_doctor_id: Optional[int] = None
+
+# 2. Tạo Daily Order (Diễn tiến hàng ngày)
+class DailyOrderCreate(BaseModel):
+    progress_note: str         # Diễn biến bệnh
+    doctor_instruction: str    # Y lệnh
+    nurse_notes: Optional[str] = None # Chăm sóc
+    vitals: Optional[dict] = None     # JSON sinh hiệu { "temp": 37, "bp": "120/80" }
+
+class DailyOrderResponse(DailyOrderCreate):
+    order_id: int
+    doctor_id: int
+    date: date
+    doctor_name: Optional[str] = None # Để hiển thị tên BS
+    class Config:
+        from_attributes = True
+
+# 3. Yêu cầu chuyển giường
+class BedTransferRequest(BaseModel):
+    new_bed_id: int
+    reason: Optional[str] = None
+
+# 4. Schema hiển thị lịch sử giường (Bed History)
+class BedAllocationResponse(BaseModel):
+    allocation_id: int
+    bed_number: str
+    room_number: str
+    check_in_time: datetime
+    check_out_time: Optional[datetime]
+    price_per_day: float
+    total_price: Optional[float] = 0.0 # Tiền tạm tính
+    class Config:
+        from_attributes = True
+
+# 5. Schema chi tiết hồ sơ nội trú (Detail)
+class InpatientDetailResponse(InpatientResponse):
+    # Kế thừa các field cơ bản (id, patient_name, status...)
+    # Bổ sung:
+    treating_doctor_name: Optional[str] = None
+    daily_orders: List[DailyOrderResponse] = []
+    bed_history: List[BedAllocationResponse] = []
+    current_bed_fee: float = 0.0 # Tổng tiền giường tạm tính đến hiện tại
+
+    class Config:
+        from_attributes = True
+
+# 6. Schema Xem trước Viện phí (Billing Preview)
+class InpatientBillingPreview(BaseModel):
+    inpatient_id: int
+    patient_name: str
+    admission_date: datetime
+    
+    # Chi tiết
+    bed_fee_total: float
+    medicine_fee_total: float
+    service_fee_total: float
+    
+    # Tổng cộng
+    total_amount: float
+    
+    # List chi tiết để in bảng kê
+    bed_details: List[dict]
+    medicine_details: List[dict]
+    service_details: List[dict]

@@ -20,8 +20,9 @@ import InpatientMap from './pages/InpatientMap';
 import Profile from './pages/Profile';
 import Patients from './pages/Patients';
 import PatientDetail from './pages/PatientDetail';
-import AppointmentManager from './pages/AppointmentManager'
-
+import AppointmentManager from './pages/AppointmentManager';
+import InpatientList from './pages/InpatientList';
+import InpatientDetail from './pages/InpatientDetail';
 
 function App() {
   return (
@@ -163,6 +164,24 @@ function App() {
             <ProtectedRoute 
               allowedRoles={["ADMIN", "NURSE"]} 
               Component={() => <MainLayout><InpatientMap /></MainLayout>} 
+            />
+          } 
+        />
+        <Route 
+          path="/inpatients" 
+          element={
+            <ProtectedRoute 
+              allowedRoles={["ADMIN", "DOCTOR", "NURSE"]} 
+              Component={() => <MainLayout><InpatientList /></MainLayout>} 
+            />
+          } 
+        />
+        <Route 
+          path="/inpatients/:id" 
+          element={
+            <ProtectedRoute 
+              allowedRoles={["ADMIN", "DOCTOR", "NURSE"]} 
+              Component={() => <MainLayout><InpatientDetail /></MainLayout>} 
             />
           } 
         />
