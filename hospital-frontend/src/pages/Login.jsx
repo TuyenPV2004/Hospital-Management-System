@@ -144,7 +144,7 @@ const Login = () => {
                         >
                             Đặt lịch khám ngay
                         </Link>
-                        <p>Liên hệ quản trị viên - Hotline: 0123 456 789</p>
+                        <p>Liên hệ quản trị viên - Hotline: 012345678</p>
                     </div>
                 </form>
             </div>
