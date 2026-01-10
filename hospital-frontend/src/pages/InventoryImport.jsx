@@ -75,7 +75,7 @@ const InventoryImport = () => {
 
     return (
         <div className="p-6 bg-gray-50 min-h-screen">
-            <h1 className="text-2xl font-bold mb-6 text-green-700">Nhập Kho (Thuốc & Vật tư)</h1>
+            <h1 className="text-2xl font-bold mb-6 text-black">Quản lý nhập xuất</h1>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Panel Trái: Thông tin chung */}
@@ -85,7 +85,7 @@ const InventoryImport = () => {
                         <label className="block text-sm font-medium">Nhà cung cấp:</label>
                         <select className="w-full p-2 border rounded" 
                             onChange={e => setSelectedSupplier(e.target.value)}>
-                            <option value="">-- Chọn NCC --</option>
+                            <option value="">Lựa chọn nhà cung cấp</option>
                             {suppliers.map(s => <option key={s.supplier_id} value={s.supplier_id}>{s.name}</option>)}
                         </select>
                     </div>
@@ -94,19 +94,19 @@ const InventoryImport = () => {
                         <textarea className="w-full p-2 border rounded" rows="3"
                              onChange={e => setNote(e.target.value)}></textarea>
                     </div>
-                    <button onClick={handleSave} className="w-full bg-green-600 text-white py-2 rounded font-bold hover:bg-green-700">
-                        LƯU PHIẾU NHẬP
+                    <button onClick={handleSave} className="w-full bg-black text-white py-2 rounded font-bold hover:bg-green-700">
+                        Lưu thông tin phiếu
                     </button>
                 </div>
 
                 {/* Panel Phải: Danh sách hàng */}
                 <div className="col-span-2 bg-white p-4 rounded shadow">
-                    <h3 className="font-bold mb-4 border-b pb-2">Chi tiết hàng hóa</h3>
+                    <h3 className="font-bold mb-4 border-b pb-2">Thông tin chi tiết hàng hóa</h3>
                     
                     {/* Form thêm dòng */}
                     <div className="grid grid-cols-6 gap-2 mb-4 bg-gray-100 p-3 rounded">
                         <div className="col-span-2">
-                            <label className="text-xs font-bold">Tên Thuốc/VT</label>
+                            <label className="text-xs font-bold">Tên Thuốc</label>
                             <select className="w-full p-1 border rounded text-sm"
                                 onChange={e => setSelectedItem(e.target.value)}>
                                 <option value="">-- Chọn --</option>
@@ -154,7 +154,7 @@ const InventoryImport = () => {
                             ))}
                             {details.length > 0 && (
                                 <tr className="bg-green-50">
-                                    <td colSpan="4" className="p-2 text-right font-bold">TỔNG CỘNG:</td>
+                                    <td colSpan="4" className="p-2 text-right font-bold">Tổng:</td>
                                     <td className="p-2 font-bold text-red-600">
                                         {details.reduce((sum, item) => sum + (item.quantity * item.import_price), 0).toLocaleString()} đ
                                     </td>

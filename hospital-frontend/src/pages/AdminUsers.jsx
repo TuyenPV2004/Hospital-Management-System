@@ -33,21 +33,21 @@ const AdminUsers = () => {
 
     return (
         <div className="p-8 bg-gray-50 min-h-screen">
-            <h1 className="text-3xl font-bold text-gray-800 mb-8">🛠 Quản Lý Nhân Sự</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-8">Quản lý nhân sự bệnh viện</h1>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* FORM TẠO NHÂN VIÊN */}
                 <div className="bg-white p-6 rounded shadow h-fit">
-                    <h2 className="text-xl font-bold mb-4 text-blue-700">Cấp Tài Khoản Mới</h2>
+                    <h2 className="text-xl font-bold mb-4 text-blue-700">Cấp tài khoản mới</h2>
                     <form onSubmit={handleCreateStaff} className="space-y-3">
                         <div>
-                            <label className="font-bold text-sm">Vai trò:</label>
+                            <label className="font-bold text-sm">Vai trò nhân sự:</label>
                             <select className="w-full border p-2 rounded font-bold"
                                 value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
-                                <option value="DOCTOR">Bác sĩ (DOCTOR)</option>
-                                <option value="NURSE">Y tá (NURSE)</option>
-                                <option value="ADMIN">Quản trị viên (ADMIN)</option>
-                                <option value="TECHNICIAN">Kỹ thuật viên</option>
+                                <option value="DOCTOR">DOCTOR</option>
+                                <option value="NURSE">NURSE</option>
+                                <option value="ADMIN">ADMIN</option>
+                                <option value="TECHNICIAN">TECHNICAL</option>
                             </select>
                         </div>
                         <input type="text" placeholder="Tên đăng nhập" required className="w-full border p-2 rounded"
@@ -57,14 +57,14 @@ const AdminUsers = () => {
                         <input type="text" placeholder="Họ và tên nhân viên" required className="w-full border p-2 rounded"
                             value={newUser.full_name} onChange={e => setNewUser({...newUser, full_name: e.target.value})} />
                         <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700">
-                            + Thêm Nhân Viên
+                            Tạo tài khoản
                         </button>
                     </form>
                 </div>
 
                 {/* DANH SÁCH NHÂN VIÊN */}
                 <div className="lg:col-span-2 bg-white p-6 rounded shadow">
-                    <h2 className="text-xl font-bold mb-4 text-gray-700">Danh Sách Cán Bộ Nhân Viên</h2>
+                    <h2 className="text-xl font-bold mb-4 text-gray-700">Danh sách cán bộ nhân viên</h2>
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-gray-100 border-b">

@@ -40,16 +40,16 @@ const Pharmacy = () => {
 
     return (
         <div className="p-6 bg-gray-50 min-h-screen">
-            <h1 className="text-3xl font-bold text-teal-700 mb-6">🏥 Quản Lý Kho Dược (GPP)</h1>
+            <h1 className="text-3xl font-bold text-black mb-6">Quản lý kho dược</h1>
             
             {/* --- FORM NHẬP KHO CHI TIẾT --- */}
             <div className="bg-white p-6 rounded shadow-lg mb-8">
-                <h2 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Nhập thuốc mới</h2>
+                <h2 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Nhập thông tin thuốc</h2>
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     
                     {/* Hàng 1: Định danh thuốc */}
                     <div className="col-span-1">
-                        <label className="text-xs font-bold text-gray-600">Tên Biệt Dược</label>
+                        <label className="text-xs font-bold text-gray-600">Tên biệt dược</label>
                         <input name="name" onChange={handleChange} required className="w-full border p-2 rounded focus:ring-teal-500" placeholder="VD: Panadol Extra" />
                     </div>
                     <div className="col-span-1">
@@ -60,8 +60,8 @@ const Pharmacy = () => {
                         <label className="text-xs font-bold text-gray-600">Nhóm thuốc</label>
                         <select name="category" onChange={handleChange} className="w-full border p-2 rounded">
                             <option>Kháng sinh</option>
-                            <option>Giảm đau / Hạ sốt</option>
-                            <option>Vitamin & Khoáng chất</option>
+                            <option>Giảm đau, hạ sốt</option>
+                            <option>Vitamin, khoáng chất</option>
                             <option>Tim mạch</option>
                             <option>Tiêu hóa</option>
                         </select>
@@ -82,25 +82,25 @@ const Pharmacy = () => {
                         </select>
                     </div>
                     <div>
-                        <label className="text-xs font-bold text-gray-600">Giá Nhập (Vốn)</label>
+                        <label className="text-xs font-bold text-gray-600">Giá nhập thuốc</label>
                         <input type="number" name="import_price" onChange={handleChange} className="w-full border p-2 rounded" />
                     </div>
                     <div>
-                        <label className="text-xs font-bold text-gray-600 text-blue-600">Giá Bán (Niêm yết)</label>
+                        <label className="text-xs font-bold text-gray-600 text-blue-600">Giá bán thuốc</label>
                         <input type="number" name="price" onChange={handleChange} required className="w-full border p-2 rounded font-bold text-blue-700" />
                     </div>
                     <div>
                         <label className="text-xs font-bold text-gray-600">Số lượng nhập</label>
-                        <input type="number" name="stock_quantity" onChange={handleChange} required className="w-full border p-2 rounded bg-yellow-50" />
+                        <input type="number" name="stock_quantity" onChange={handleChange} required className="w-full border p-2 rounded" />
                     </div>
 
                     {/* Hàng 3: Hạn dùng & Nguồn gốc */}
                     <div>
-                        <label className="text-xs font-bold text-gray-600 text-red-500">Hạn sử dụng</label>
+                        <label className="text-xs font-bold text-gray-600 text-black">Hạn sử dụng</label>
                         <input type="date" name="expiry_date" onChange={handleChange} required className="w-full border p-2 rounded" />
                     </div>
                     <div>
-                        <label className="text-xs font-bold text-gray-600">Số lô SX</label>
+                        <label className="text-xs font-bold text-gray-600">Số lô sản xuất</label>
                         <input name="batch_number" onChange={handleChange} className="w-full border p-2 rounded" />
                     </div>
                     <div className="col-span-2">
@@ -110,13 +110,13 @@ const Pharmacy = () => {
                     
                     {/* Hàng 4: Cách dùng */}
                     <div className="col-span-4">
-                        <label className="text-xs font-bold text-gray-600">Cách dùng mặc định (Gợi ý cho BS)</label>
-                        <input name="usage_instruction" onChange={handleChange} className="w-full border p-2 rounded" placeholder="VD: Uống sau ăn, ngày 2 lần" />
+                        <label className="text-xs font-bold text-gray-600">Hướng dẫn sử dụng</label>
+                        <input name="usage_instruction" onChange={handleChange} className="w-full border p-2 rounded" placeholder="Nhập hướng dẫn sử dụng" />
                     </div>
 
                     <div className="col-span-4 mt-2">
                         <button type="submit" className="w-full bg-teal-600 text-white font-bold py-3 rounded hover:bg-teal-700 shadow">
-                            + NHẬP KHO DƯỢC
+                            Xác nhận nhập kho
                         </button>
                     </div>
                 </form>
@@ -130,12 +130,12 @@ const Pharmacy = () => {
                         <thead className="bg-gray-100 uppercase font-bold text-gray-600">
                             <tr>
                                 <th className="p-3">ID</th>
-                                <th className="p-3">Tên thuốc / Hoạt chất</th>
+                                <th className="p-3">Tên thuốc</th>
                                 <th className="p-3">Đơn vị</th>
                                 <th className="p-3">Giá bán</th>
                                 <th className="p-3">Tồn kho</th>
                                 <th className="p-3">Hạn dùng</th>
-                                <th className="p-3">Nhà SX</th>
+                                <th className="p-3">Nhà sản xuất</th>
                             </tr>
                         </thead>
                         <tbody>

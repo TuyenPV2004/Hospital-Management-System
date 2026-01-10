@@ -108,8 +108,8 @@ const Booking = () => {
     return (
         <div className="min-h-screen bg-gray-50 p-6 flex justify-center">
             <div className="bg-white w-full max-w-3xl rounded-xl shadow-lg p-8">
-                <h2 className="text-3xl font-bold text-blue-800 mb-6 text-center border-b pb-4">
-                    📅 Đặt Lịch Khám Online
+                <h2 className="text-3xl font-bold text-black mb-6 text-center border-b pb-4">
+                    Đặt lịch thăm khám trực tuyến
                 </h2>
 
                 <form onSubmit={handleBooking} className="space-y-6">
@@ -122,7 +122,7 @@ const Booking = () => {
                             onChange={(e) => setSelectedDoctor(e.target.value)}
                             required
                         >
-                            <option value="">-- Vui lòng chọn --</option>
+                            <option value="">Vui lòng chọn</option>
                             {doctors.map(d => (
                                 <option key={d.user_id} value={d.user_id}>
                                     BS. {d.full_name}
@@ -175,11 +175,11 @@ const Booking = () => {
 
                     {/* LÝ DO KHÁM */}
                     <div>
-                        <label className="block font-bold text-gray-700 mb-2">Lý do khám / Triệu chứng:</label>
+                        <label className="block font-bold text-gray-700 mb-2">Lý do khám:</label>
                         <textarea 
                             className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
                             rows="3"
-                            placeholder="VD: Đau đầu, sốt nhẹ..."
+                            placeholder="Nêu triệu chứng hoặc lý do bạn muốn khám"
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
                         ></textarea>
@@ -190,10 +190,10 @@ const Booking = () => {
                         type="submit" 
                         disabled={loading}
                         className={`w-full py-3 rounded-lg text-white font-bold text-lg shadow-md transition-all
-                            ${loading ? 'bg-gray-400 cursor-wait' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'}
+                            ${loading ? 'bg-gray-400 cursor-wait' : 'bg-gradient-to-r from-black to-indigo-600 hover:from-black hover:to-indigo-700'}
                         `}
                     >
-                        {loading ? 'Đang xử lý...' : 'XÁC NHẬN ĐẶT LỊCH'}
+                        {loading ? 'Đang xử lý' : 'XÁC NHẬN ĐẶT LỊCH'}
                     </button>
                 </form>
             </div>

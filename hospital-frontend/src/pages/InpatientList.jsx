@@ -106,12 +106,12 @@ const InpatientList = () => {
     return (
         <div className="p-6">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold text-blue-800">Quản lý Nội Trú</h2>
+                <h2 className="text-2xl font-bold text-blue-800">Quản lý nội trú</h2>
                 <button 
                     onClick={openModal}
-                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2 font-medium shadow"
+                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2 font-medium shadow"
                 >
-                    ➕ Nhập viện mới
+                    Nhập viện
                 </button>
             </div>
             
@@ -176,19 +176,19 @@ const InpatientList = () => {
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                         <div className="p-6 border-b flex justify-between items-center sticky top-0 bg-white">
-                            <h3 className="text-xl font-bold">Tạo Hồ Sơ Nội Trú Mới</h3>
+                            <h3 className="text-xl font-bold">Tạo hồ sơ nội trú</h3>
                             <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
                         </div>
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Chọn Bệnh Nhân *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Chọn bệnh nhân</label>
                                 <select 
                                     className="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"
                                     value={formData.patient_id}
                                     onChange={(e) => setFormData({...formData, patient_id: e.target.value})}
                                     required
                                 >
-                                    <option value="">-- Chọn bệnh nhân --</option>
+                                    <option value="">Chọn bệnh nhân</option>
                                     {patients.map(p => (
                                         <option key={p.patient_id} value={p.patient_id}>
                                             {p.full_name} - {p.cccd} ({p.phone})
@@ -198,14 +198,14 @@ const InpatientList = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Chọn Giường *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Chọn giường bệnh</label>
                                 <select 
                                     className="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"
                                     value={formData.bed_id}
                                     onChange={(e) => setFormData({...formData, bed_id: e.target.value})}
                                     required
                                 >
-                                    <option value="">-- Chọn giường trống --</option>
+                                    <option value="">Chọn giường trống</option>
                                     {beds.map(b => (
                                         <option key={b.bed_id} value={b.bed_id}>
                                             {b.bed_number} - {b.deptName} ({parseFloat(b.price).toLocaleString()}đ/ngày)
@@ -215,14 +215,14 @@ const InpatientList = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Bác Sĩ Điều Trị *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Chỉ định bác sĩ điều trị</label>
                                 <select 
                                     className="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"
                                     value={formData.doctor_id}
                                     onChange={(e) => setFormData({...formData, doctor_id: e.target.value})}
                                     required
                                 >
-                                    <option value="">-- Chọn bác sĩ --</option>
+                                    <option value="">Chọn bác sĩ</option>
                                     {doctors.map(d => (
                                         <option key={d.user_id} value={d.user_id}>
                                             {d.full_name} - {d.department || 'Chưa phân khoa'}
@@ -232,7 +232,7 @@ const InpatientList = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Lý Do Nhập Viện *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Lý do nhập viện</label>
                                 <textarea 
                                     className="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"
                                     rows="3"
@@ -244,7 +244,7 @@ const InpatientList = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Chẩn Đoán Ban Đầu *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Chẩn đoán ban đầu</label>
                                 <textarea 
                                     className="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"
                                     rows="3"

@@ -123,19 +123,19 @@ const InpatientDetail = () => {
                     onClick={() => setActiveTab('daily')}
                     className={`flex-1 py-3 font-medium ${activeTab === 'daily' ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50' : 'text-gray-500 hover:bg-gray-50'}`}
                 >
-                    🩺 Theo Dõi & Y Lệnh
+                    Thông tin diễn biến
                 </button>
                 <button 
                     onClick={() => setActiveTab('bed')}
                     className={`flex-1 py-3 font-medium ${activeTab === 'bed' ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50' : 'text-gray-500 hover:bg-gray-50'}`}
                 >
-                    🛏️ Lịch Sử Giường
+                    Lịch sử giường nằm
                 </button>
                 <button 
                     onClick={() => setActiveTab('billing')}
                     className={`flex-1 py-3 font-medium ${activeTab === 'billing' ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50' : 'text-gray-500 hover:bg-gray-50'}`}
                 >
-                    💰 Viện Phí Tạm Tính
+                    Viện phí tạm tính
                 </button>
             </div>
 
@@ -212,7 +212,7 @@ const InpatientDetail = () => {
                             onClick={openTransferModal}
                             className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 flex items-center gap-2"
                         >
-                            🔄 Chuyển Giường
+                            Chuyển giường bệnh
                         </button>
                     </div>
                     <table className="min-w-full text-sm">
@@ -261,7 +261,7 @@ const InpatientDetail = () => {
                     </div>
 
                     <div>
-                        <h4 className="font-bold border-b pb-2 mb-2">Chi tiết Dịch vụ & Thuốc đã dùng</h4>
+                        <h4 className="font-bold border-b pb-2 mb-2">Chi tiết dịch vụ sử dụng</h4>
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="text-left text-gray-500">

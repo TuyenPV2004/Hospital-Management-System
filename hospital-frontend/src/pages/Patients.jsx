@@ -64,7 +64,7 @@ const Patients = () => {
           onClick={() => navigate('/reception')} // Hoặc mở Modal tạo mới
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-sm transition flex items-center gap-2"
         >
-          <span>+ Thêm mới</span>
+          <span>Thêm mới</span>
         </button>
       </div>
 

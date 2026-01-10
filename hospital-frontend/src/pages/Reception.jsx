@@ -1,6 +1,9 @@
 // src/pages/Reception.jsx
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+import{
+    Ambulance
+} from 'lucide-react'
 
 const Reception = () => {
     // --- STATE QUẢN LÝ DỮ LIỆU ---
@@ -127,15 +130,15 @@ const Reception = () => {
 
     return (
         <div className="p-6 bg-gray-50 min-h-screen relative">
-            <h1 className="text-3xl font-bold text-blue-700 mb-6">Khu Vực Tiếp Đón & Sàng Lọc</h1>
+            <h1 className="text-3xl font-bold text-black mb-6">Khu vực tiếp đón</h1>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
                 {/* --- CỘT TRÁI: FORM THÊM BỆNH NHÂN (Giữ nguyên form chi tiết) --- */}
                 <div className="md:col-span-1 bg-white p-4 rounded shadow h-fit">
-                    <h2 className="text-xl font-bold mb-4 text-gray-700">Thêm Bệnh Nhân Mới</h2>
+                    <h2 className="text-xl font-bold mb-4 text-gray-700">Tạo hồ sơ bệnh nhân</h2>
                     <form onSubmit={handleAddPatient} className="space-y-3">
-                        <h3 className="font-bold text-blue-600 border-b text-sm uppercase mt-2">1. Hành chính</h3>
+                        <h3 className="font-bold text-black border-b text-sm uppercase mt-2">1. Hành chính</h3>
                         <input type="text" placeholder="Họ và tên (*)" required className="w-full border p-2 rounded"
                             value={newPatient.full_name} onChange={e => setNewPatient({...newPatient, full_name: e.target.value})} />
                         
@@ -144,7 +147,7 @@ const Reception = () => {
                                 value={newPatient.dob} onChange={e => setNewPatient({...newPatient, dob: e.target.value})} />
                             <select className="border p-2 rounded" value={newPatient.gender} onChange={e => setNewPatient({...newPatient, gender: e.target.value})}>
                                 <option value="Nam">Nam</option>
-                                <option value="Nu">Nữ</option>
+                                <option value="Nữ">Nữ</option>
                             </select>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
@@ -156,26 +159,26 @@ const Reception = () => {
                         <input type="text" placeholder="Người thân (Tên - SĐT)" className="w-full border p-2 rounded"
                             value={newPatient.emergency_contact} onChange={e => setNewPatient({...newPatient, emergency_contact: e.target.value})} />
 
-                        <h3 className="font-bold text-red-600 border-b text-sm uppercase mt-4">2. Y tế & Thể trạng</h3>
+                        <h3 className="font-bold text-black border-b text-sm uppercase mt-4">2. Chỉ số sức khỏe</h3>
                         <div className="grid grid-cols-3 gap-2">
-                            <input type="number" placeholder="Cao (cm)" className="border p-2 rounded"
+                            <input type="number" placeholder="Chiều cao" className="border p-2 rounded"
                                 value={newPatient.height} onChange={e => setNewPatient({...newPatient, height: e.target.value})} />
-                            <input type="number" placeholder="Nặng (kg)" className="border p-2 rounded"
+                            <input type="number" placeholder="Cân nặng" className="border p-2 rounded"
                                 value={newPatient.weight} onChange={e => setNewPatient({...newPatient, weight: e.target.value})} />
                             <select className="border p-2 rounded" value={newPatient.blood_type} onChange={e => setNewPatient({...newPatient, blood_type: e.target.value})}>
-                                <option value="">Máu?</option>
+                                <option value="">Máu</option>
                                 <option value="A">A</option><option value="B">B</option><option value="AB">AB</option><option value="O">O</option>
                             </select>
                         </div>
                         
-                        <textarea placeholder="⚠️ TIỀN SỬ DỊ ỨNG (Quan trọng)" className="w-full border p-2 rounded border-red-300 bg-red-50 text-red-700 font-bold placeholder-red-300"
+                        <textarea placeholder="Tiền sử bệnh nhân" className="w-full border p-2 rounded border-red-300 bg-red-50 text-red-700 font-bold placeholder-red-300"
                             value={newPatient.allergies} onChange={e => setNewPatient({...newPatient, allergies: e.target.value})}></textarea>
                         
-                        <textarea placeholder="Bệnh nền (Tiểu đường, HA...)" className="w-full border p-2 rounded"
+                        <textarea placeholder="Bệnh nền" className="w-full border p-2 rounded"
                             value={newPatient.medical_history} onChange={e => setNewPatient({...newPatient, medical_history: e.target.value})}></textarea>
 
                         <button type="submit" className="w-full bg-green-600 text-white py-2 rounded font-bold hover:bg-green-700 mt-2">
-                            + Lưu Hồ Sơ
+                            Lưu hồ sơ bệnh nhân
                         </button>
                     </form>
                 </div>
@@ -183,7 +186,7 @@ const Reception = () => {
                 {/* --- CỘT PHẢI: DANH SÁCH & TÌM KIẾM --- */}
                 <div className="md:col-span-2 bg-white p-4 rounded shadow h-fit">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-gray-700">Tra Cứu Bệnh Nhân</h2>
+                        <h2 className="text-xl font-bold text-gray-700">Tra cứu thông tin bệnh nhân</h2>
                         <form onSubmit={handleSearch} className="flex gap-2">
                             <input 
                                 type="text" placeholder="Tên hoặc mã BHYT..."
@@ -192,7 +195,7 @@ const Reception = () => {
                                 onChange={e => setSearchTerm(e.target.value)}
                             />
                             <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                                Tìm
+                                Tìm kiếm
                             </button>
                         </form>
                     </div>
@@ -205,7 +208,7 @@ const Reception = () => {
                                     <th className="p-3 border">Họ Tên</th>
                                     <th className="p-3 border">Năm sinh</th>
                                     <th className="p-3 border">Giới tính</th>
-                                    <th className="p-3 border">Hành động</th>
+                                    <th className="p-3 border">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -221,7 +224,7 @@ const Reception = () => {
                                                 onClick={() => handleOpenTriage(p.patient_id)}
                                                 className="bg-orange-500 text-white px-3 py-1 rounded text-sm hover:bg-orange-600 font-bold shadow"
                                             >
-                                                Tiếp đón & Sàng lọc
+                                                Sàng lọc bệnh nhân
                                             </button>
                                         </td>
                                     </tr>
@@ -244,8 +247,8 @@ const Reception = () => {
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 transition-opacity">
                     <div className="bg-white p-6 rounded-lg shadow-2xl w-full max-w-2xl transform transition-all scale-100">
                         <div className="flex justify-between items-center mb-4 border-b pb-2">
-                            <h2 className="text-2xl font-bold text-blue-800">
-                                🩺 Sàng Lọc Bệnh Nhân (Triage)
+                            <h2 className="text-2xl font-bold text-black">
+                                Thông tin sàng lọc bệnh nhân
                             </h2>
                             <button onClick={() => setShowTriageModal(false)} className="text-gray-500 hover:text-red-500 font-bold text-xl">&times;</button>
                         </div>
@@ -254,9 +257,9 @@ const Reception = () => {
                             {/* Lý do khám & Ưu tiên */}
                             <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div className="col-span-2">
-                                    <label className="font-bold text-gray-700">Lý do khám (*):</label>
+                                    <label className="font-bold text-gray-700">Triệu chứng:</label>
                                     <input required type="text" className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                                        placeholder="VD: Đau bụng dữ dội, Sốt cao, Tai nạn..."
+                                        placeholder="Nhập triệu chứng chính của bệnh nhân"
                                         value={triageForm.chief_complaint}
                                         onChange={e => setTriageForm({...triageForm, chief_complaint: e.target.value})}
                                     />
@@ -272,18 +275,18 @@ const Reception = () => {
                                             borderColor: triageForm.priority === 'EMERGENCY' ? 'red' : '#e5e7eb'
                                         }}
                                     >
-                                        <option value="NORMAL">🟢 Bình thường</option>
-                                        <option value="HIGH">🟡 Ưu tiên cao (Trẻ em/Người già)</option>
-                                        <option value="EMERGENCY" className="text-red-600 font-bold">🔴 CẤP CỨU</option>
+                                        <option value="NORMAL" className="text-blue-600 font-bold">Bình thường</option>
+                                        <option value="HIGH" className="text-green-600 font-bold">Ưu tiên</option>
+                                        <option value="EMERGENCY" className="text-red-600 font-bold"> Cấp cứu</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="font-bold text-gray-700">Chỉ định Bác sĩ:</label>
+                                    <label className="font-bold text-gray-700">Chỉ định bác sĩ:</label>
                                     <select className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500"
                                         value={triageForm.doctor_id}
                                         onChange={e => setTriageForm({...triageForm, doctor_id: e.target.value})}
                                     >
-                                        <option value="">-- Chọn bác sĩ (Tùy chọn) --</option>
+                                        <option value="">Vui lòng lựa chọn</option>
                                         {doctors.map(d => (
                                             <option key={d.user_id} value={d.user_id}>{d.full_name}</option>
                                         ))}
@@ -293,26 +296,26 @@ const Reception = () => {
 
                             {/* Chỉ số sinh tồn */}
                             <fieldset className="border p-4 rounded bg-blue-50 mb-6">
-                                <legend className="font-bold text-blue-700 px-2 bg-blue-50 rounded">Chỉ số sinh tồn (Vitals)</legend>
+                                <legend className="font-bold text-black px-2 bg-blue-50 rounded">Chỉ số sinh tồn</legend>
                                 <div className="grid grid-cols-4 gap-4">
                                     <div>
-                                        <label className="text-xs font-bold text-gray-600">Mạch (lần/p)</label>
-                                        <input type="number" className="w-full border p-2 rounded text-center"
+                                        <label className="text-xs font-bold text-gray-600">Mạch đập</label>
+                                        <input type="number" placeholder="Số lần" className="w-full border p-2 rounded text-center"
                                             value={triageForm.pulse} onChange={e => setTriageForm({...triageForm, pulse: e.target.value})} />
                                     </div>
                                     <div>
-                                        <label className="text-xs font-bold text-gray-600">Nhiệt độ (°C)</label>
-                                        <input type="number" step="0.1" className="w-full border p-2 rounded text-center"
+                                        <label className="text-xs font-bold text-gray-600">Nhiệt độ</label>
+                                        <input type="number" placeholder="Nhiệt độ" step="0.1" className="w-full border p-2 rounded text-center"
                                             value={triageForm.temperature} onChange={e => setTriageForm({...triageForm, temperature: e.target.value})} />
                                     </div>
                                     <div>
                                         <label className="text-xs font-bold text-gray-600">Huyết áp</label>
-                                        <input type="text" placeholder="120/80" className="w-full border p-2 rounded text-center"
+                                        <input type="text" placeholder="Huyết áp" className="w-full border p-2 rounded text-center"
                                             value={triageForm.blood_pressure} onChange={e => setTriageForm({...triageForm, blood_pressure: e.target.value})} />
                                     </div>
                                     <div>
                                         <label className="text-xs font-bold text-gray-600">Nhịp thở</label>
-                                        <input type="number" className="w-full border p-2 rounded text-center"
+                                        <input type="number" placeholder="Nhịp thở" className="w-full border p-2 rounded text-center"
                                             value={triageForm.respiratory_rate} onChange={e => setTriageForm({...triageForm, respiratory_rate: e.target.value})} />
                                     </div>
                                 </div>
@@ -323,7 +326,7 @@ const Reception = () => {
                                     Hủy bỏ
                                 </button>
                                 <button type="submit" className="px-6 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 shadow-lg transform hover:scale-105 transition-transform">
-                                    Xác nhận & Chuyển
+                                    Xác nhận 
                                 </button>
                             </div>
                         </form>

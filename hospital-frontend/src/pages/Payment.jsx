@@ -60,13 +60,13 @@ const Payment = () => {
 
     return (
         <div className="flex flex-col items-center min-h-screen bg-gray-100 p-6">
-            <h1 className="text-3xl font-bold text-purple-700 mb-6">💰 Quầy Thu Ngân</h1>
+            <h1 className="text-3xl font-bold text-black mb-6">Quản lý tài chính</h1>
 
             <div className="flex gap-6 w-full max-w-5xl">
                 {/* CỘT TRÁI: NHẬP LIỆU */}
                 <div className="w-1/2 bg-white p-6 rounded shadow">
                     <div className="flex gap-2 mb-4">
-                        <input type="number" placeholder="Nhập Visit ID..." className="flex-1 border p-2 rounded text-lg font-bold"
+                        <input type="number" placeholder="Nhập mã ID" className="flex-1 border p-2 rounded text-lg font-bold"
                             value={visitId} onChange={e => setVisitId(e.target.value)} />
                         <button onClick={handleCheckBill} className="bg-blue-600 text-white px-4 rounded">Kiểm tra</button>
                     </div>

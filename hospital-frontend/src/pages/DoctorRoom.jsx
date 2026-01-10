@@ -104,7 +104,7 @@ const DoctorRoom = () => {
         if (!selectedVisit) return;
         try {
             await api.put(`/visits/${selectedVisit.visit_id}/diagnosis`, examForm);
-            alert("✅ Đã lưu hồ sơ bệnh án!");
+            alert("Đã lưu hồ sơ bệnh án!");
         } catch (err) { alert("Lỗi lưu hồ sơ"); }
     };
 
@@ -167,7 +167,7 @@ const DoctorRoom = () => {
             {/* --- CỘT 1: DANH SÁCH CHỜ --- */}
             <div className="w-1/4 bg-white border-r flex flex-col">
                 <div className="p-4 bg-blue-800 text-white font-bold flex justify-between items-center">
-                    <span>Hàng Đợi Khám</span>
+                    <span>Hàng đợi</span>
                     <span className="bg-blue-600 px-2 rounded text-sm">{waitingList.length}</span>
                 </div>
                 <ul className="overflow-y-auto flex-1">
@@ -200,7 +200,7 @@ const DoctorRoom = () => {
                             
                             {patientHistory?.allergies && (
                                 <div className="bg-red-100 text-red-700 p-2 rounded font-bold mb-2 border-l-4 border-red-500">
-                                    ⚠️ DỊ ỨNG: {patientHistory.allergies}
+                                    Tiền sử dị ứng: {patientHistory.allergies}
                                 </div>
                             )}
 
@@ -220,29 +220,29 @@ const DoctorRoom = () => {
                                     <span className="font-bold text-lg">{selectedVisit.blood_pressure || '-'}</span>
                                 </div>
                                 <div className="text-center">
-                                    <span className="block text-gray-500 text-xs">SpO2/Nhịp thở</span>
+                                    <span className="block text-gray-500 text-xs">Nhịp thở</span>
                                     <span className="font-bold text-lg">{selectedVisit.respiratory_rate || '-'}</span>
                                 </div>
                             </div>
                             <div className="mt-2 text-sm">
-                                <strong>Lý do khám:</strong> {selectedVisit.chief_complaint}
+                                <strong>Lý do thăm khám:</strong> {selectedVisit.chief_complaint}
                             </div>
                         </div>
 
                         {/* 2. Form Bệnh Án */}
                         <div className="space-y-4">
                             <div>
-                                <label className="font-bold text-gray-700 block mb-1">Triệu chứng lâm sàng (Khám thấy):</label>
+                                <label className="font-bold text-gray-700 block mb-1">Triệu chứng lâm sàng:</label>
                                 <textarea className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500" rows="3"
-                                    placeholder="VD: Phổi có tiếng rale ẩm, họng đỏ..."
+                                    placeholder="Nhập triệu chứng lâm sàng"
                                     value={examForm.clinical_symptoms} onChange={e => setExamForm({...examForm, clinical_symptoms: e.target.value})}
                                 ></textarea>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
                                 <div className="col-span-2">
-                                    <label className="font-bold text-gray-700 block mb-1">Chẩn đoán (*):</label>
+                                    <label className="font-bold text-gray-700 block mb-1">Chẩn đoán bệnh:</label>
                                     <input type="text" className="w-full border p-2 rounded font-bold text-blue-900"
-                                        placeholder="VD: Viêm phế quản cấp"
+                                        placeholder="Nhập chẩn đoán"
                                         value={examForm.diagnosis} onChange={e => setExamForm({...examForm, diagnosis: e.target.value})}
                                     />
                                 </div>
@@ -255,7 +255,7 @@ const DoctorRoom = () => {
                                 </div>
                             </div>
                             <div>
-                                <label className="font-bold text-gray-700 block mb-1">Lời dặn & Hẹn tái khám:</label>
+                                <label className="font-bold text-gray-700 block mb-1">Hẹn tái khám:</label>
                                 <div className="flex gap-2">
                                     <input type="text" className="flex-1 border p-2 rounded" placeholder="Lời dặn..."
                                         value={examForm.advice} onChange={e => setExamForm({...examForm, advice: e.target.value})} />
@@ -265,13 +265,13 @@ const DoctorRoom = () => {
                             </div>
                             
                             <button onClick={handleSaveExam} className="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 shadow">
-                                💾 LƯU BỆNH ÁN
+                                Lưu hồ sơ bệnh án
                             </button>
                         </div>
                         
                         <div className="mt-8 pt-4 border-t">
-                             <button onClick={handleFinishVisit} className="w-full bg-green-600 text-white py-3 rounded font-bold text-lg hover:bg-green-700 shadow-lg">
-                                ✓ KẾT THÚC KHÁM
+                             <button onClick={handleFinishVisit} className="w-full bg-black text-white py-3 rounded font-bold text-lg hover:bg-gray-700 shadow-lg">
+                                Kết thúc khám
                             </button>
                         </div>
                     </div>
@@ -279,7 +279,7 @@ const DoctorRoom = () => {
                     {/* --- CỘT 3: KÊ ĐƠN THUỐC --- */}
                     <div className="w-1/2 p-6 bg-gray-50 overflow-y-auto">
                         <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                            💊 Đơn Thuốc Điện Tử
+                            Đơn thuốc điện tử 
                         </h2>
                         
                         <form onSubmit={handleAddPrescription} className="bg-white p-5 rounded shadow-lg border border-gray-200 mb-6">
@@ -289,7 +289,7 @@ const DoctorRoom = () => {
                                 <select className="w-full border p-2 rounded font-medium"
                                     value={presForm.medicine_id} onChange={e => setPresForm({...presForm, medicine_id: e.target.value})} required
                                 >
-                                    <option value="">-- Tìm tên thuốc / hoạt chất --</option>
+                                    <option value="">Tìm tên thuốc và hoạt chất</option>
                                     {medicines.map(med => (
                                         <option key={med.medicine_id} value={med.medicine_id} disabled={med.stock_quantity <= 0}>
                                             {med.name} ({med.active_ingredient}) - Còn: {med.stock_quantity} {med.unit}
@@ -300,7 +300,7 @@ const DoctorRoom = () => {
 
                             {/* Liều dùng chi tiết */}
                             <div className="mb-3">
-                                <label className="text-xs font-bold text-gray-500 uppercase">2. Liều dùng (Sáng - Trưa - Chiều - Tối)</label>
+                                <label className="text-xs font-bold text-gray-500 uppercase">2. Liều lượng sử dụng</label>
                                 <div className="grid grid-cols-4 gap-2 mt-1">
                                     <input type="text" placeholder="Sáng" className="border p-2 rounded text-center"
                                         value={presForm.dosage_morning} onChange={e => setPresForm({...presForm, dosage_morning: e.target.value})} />
@@ -316,7 +316,7 @@ const DoctorRoom = () => {
                             {/* Số lượng & Cách dùng */}
                             <div className="grid grid-cols-3 gap-3 mb-4">
                                 <div>
-                                    <label className="text-xs font-bold text-gray-500 uppercase">Tổng SL</label>
+                                    <label className="text-xs font-bold text-gray-500 uppercase">Số lượng</label>
                                     <input type="number" min="1" className="w-full border p-2 rounded font-bold text-blue-600"
                                         value={presForm.quantity} onChange={e => setPresForm({...presForm, quantity: e.target.value})} required />
                                 </div>
@@ -332,8 +332,8 @@ const DoctorRoom = () => {
                                 </div>
                             </div>
 
-                            <button type="submit" className="w-full bg-orange-500 text-white py-2 rounded font-bold hover:bg-orange-600 shadow">
-                                + THÊM VÀO ĐƠN
+                            <button type="submit" className="w-full bg-black text-white py-2 rounded font-bold hover:bg-gray-800 shadow">
+                                Lưu hóa đơn tạm
                             </button>
                         </form>
 
@@ -362,14 +362,14 @@ const DoctorRoom = () => {
                         {/* --- KHU VỰC CHỈ ĐỊNH CẬN LÂM SÀNG --- */}
                         <div className="mt-6 border-t pt-4">
                             <h3 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
-                                🔬 Chỉ định Cận Lâm Sàng
+                                Chỉ định dịch vụ cận lâm sàng
                             </h3>
                             
                             <div className="mb-4">
                                 <label className="block text-sm font-medium mb-2 text-gray-700">Chọn dịch vụ để chỉ định:</label>
                                 <select className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500" 
                                     onChange={(e) => handleOrderService(e.target.value)}>
-                                    <option value="">-- Chọn dịch vụ --</option>
+                                    <option value="">Lựa chọn dịch vụ</option>
                                     {services.map(s => (
                                         <option key={s.service_id} value={s.service_id}>
                                             {s.name} - {s.price?.toLocaleString() || '0'} đ

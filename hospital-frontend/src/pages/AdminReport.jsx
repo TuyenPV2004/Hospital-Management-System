@@ -80,7 +80,7 @@ const AdminReport = () => {
 
     return (
         <div className="p-6">
-            <h2 className="text-2xl font-bold mb-6 text-blue-800">📊 Báo Cáo Quản Trị</h2>
+            <h2 className="text-2xl font-bold mb-6 text-blue-800">Quản lý báo cáo</h2>
 
             {/* Controls */}
             <div className="bg-white p-4 rounded shadow mb-6 flex flex-wrap gap-4 items-end">
@@ -113,7 +113,7 @@ const AdminReport = () => {
                     disabled={activeTab === 'census' || loading}
                     className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 ml-auto flex items-center gap-2 disabled:bg-gray-400"
                 >
-                    📥 Xuất Excel
+                    Xuất báo cáo Excel
                 </button>
             </div>
 

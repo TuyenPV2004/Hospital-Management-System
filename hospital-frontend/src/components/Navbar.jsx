@@ -51,16 +51,16 @@ const Navbar = () => {
     { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} />, roles: ['ADMIN', 'DOCTOR', 'NURSE', 'PATIENT', 'TECHNICIAN'] },
     { name: 'Đặt lịch', path: '/booking', icon: <Calendar size={20} />, roles: ['ADMIN', 'DOCTOR', 'NURSE', 'PATIENT'] },
     { name: 'Quản lý lịch', path: '/appointments', icon: <ClipboardList size={20} />, roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
-    { name: 'Hồ sơ BN', path: '/patients', icon: <UserRound size={20} />, roles: ['ADMIN', 'DOCTOR', 'NURSE', 'TECHNICIAN'] },
+    { name: 'Hồ sơ bệnh án', path: '/patients', icon: <UserRound size={20} />, roles: ['ADMIN', 'DOCTOR', 'NURSE', 'TECHNICIAN'] },
     { name: 'Tiếp đón', path: '/reception', icon: <PlusSquare size={20} />, roles: ['ADMIN', 'NURSE'] },
     { name: 'Phòng khám', path: '/doctor', icon: <Stethoscope size={20} />, roles: ['ADMIN', 'DOCTOR'] },
     { name: 'Kho thuốc', path: '/pharmacy', icon: <Pill size={20} />, roles: ['ADMIN', 'NURSE'] },
     { name: 'Sơ đồ giường', path: '/inpatient', icon: <Map size={20} />, roles: ['ADMIN', 'NURSE'] },
     { name: 'Quản lý nội trú', path: '/inpatients', icon: <Bed size={20} />, roles: ['ADMIN', 'DOCTOR', 'NURSE'] },
-    { name: 'Thanh toán', path: '/payment', icon: <CreditCard size={20} />, roles: ['ADMIN'] },
-    { name: 'Nhân sự', path: '/admin/users', icon: <Users size={20} />, roles: ['ADMIN'] },
-    { name: 'Báo cáo', path: '/admin', icon: <BarChart3 size={20} />, roles: ['ADMIN'] },
-    { name: 'Nhập kho', path: '/inventory/import', icon: <Package size={20} />, roles: ['ADMIN'] },
+    { name: 'Quan lý tài chính', path: '/payment', icon: <CreditCard size={20} />, roles: ['ADMIN'] },
+    { name: 'Quản lý nhân sự', path: '/admin/users', icon: <Users size={20} />, roles: ['ADMIN'] },
+    { name: 'Quản lý báo cáo', path: '/admin', icon: <BarChart3 size={20} />, roles: ['ADMIN'] },
+    { name: 'Quản lý nhập xuất', path: '/inventory/import', icon: <Package size={20} />, roles: ['ADMIN'] },
   ];
 
   const filteredMenu = menuItems.filter(item => item.roles.includes(user.role));

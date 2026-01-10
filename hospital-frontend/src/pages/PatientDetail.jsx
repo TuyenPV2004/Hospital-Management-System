@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { getPatientServiceResults, getServiceReport } from '../services/api';
+import {
+   Bell
+} from 'lucide-react';
 
 // Component hiển thị mẫu in (Ẩn trên giao diện, chỉ hiện khi in hoặc trong Modal)
 const PrintReportTemplate = ({ data, onClose }) => {
@@ -67,7 +70,7 @@ const PrintReportTemplate = ({ data, onClose }) => {
                 {/* Nút thao tác (Sẽ ẩn khi in) */}
                 <div className="mt-6 flex justify-end gap-3 print:hidden border-t pt-4">
                     <button onClick={onClose} className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Đóng</button>
-                    <button onClick={handlePrint} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">🖨️ In Kết Quả</button>
+                    <button onClick={handlePrint} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">In Kết Quả</button>
                 </div>
             </div>
         </div>
@@ -174,7 +177,7 @@ const PatientDetail = () => {
          </button>
          <div className="space-x-2">
             <button onClick={() => setIsEditOpen(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-sm transition">
-               ✏️ Cập nhật hồ sơ
+               Cập nhật hồ sơ
             </button>
          </div>
       </div>
@@ -204,7 +207,7 @@ const PatientDetail = () => {
 
             {/* Cột 2: Chỉ số sức khỏe */}
             <div className="space-y-4">
-               <h3 className="font-bold text-gray-700 uppercase text-xs border-b pb-1">Chỉ số & Khẩn cấp</h3>
+               <h3 className="font-bold text-gray-700 uppercase text-xs border-b pb-1">Chỉ số sức khỏe</h3>
                <div className="grid grid-cols-2 gap-4">
                   <InfoBox label="Nhóm máu" value={patient.blood_type || '?'} color="red" />
                   <InfoBox label="Giới tính" value={patient.gender} color="blue" />
@@ -220,7 +223,7 @@ const PatientDetail = () => {
             {/* Cột 3: Tiền sử (Quan trọng) */}
             <div className="bg-red-50 p-4 rounded-lg border border-red-100">
                <h3 className="font-bold text-red-700 uppercase text-xs mb-3 flex items-center gap-2">
-                  ⚠️ Cảnh báo Y khoa
+                  <Bell size={16} /> Cảnh báo Y khoa
                </h3>
                <div className="space-y-3">
                   <div>
@@ -242,13 +245,13 @@ const PatientDetail = () => {
           className={`px-6 py-3 font-medium transition-colors ${activeTab === 'info' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
           onClick={() => setActiveTab('info')}
         >
-          📋 Thông tin & Lịch sử
+         Lịch sử khám chữa bệnh
         </button>
         <button 
           className={`px-6 py-3 font-medium transition-colors ${activeTab === 'cls' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
           onClick={() => setActiveTab('cls')}
         >
-          🧪 Kết quả CLS
+         Kết quả CLS
         </button>
       </div>
 
@@ -256,7 +259,7 @@ const PatientDetail = () => {
       {activeTab === 'info' && (
       <div className="bg-white p-6 rounded-b-xl rounded-tr-xl shadow-sm border border-gray-100 border-t-0">
          <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-            🏥 Lịch sử khám bệnh ({history.length})
+         Lịch sử ({history.length})
          </h2>
 
          <div className="relative border-l-2 border-gray-200 ml-4 space-y-8">
@@ -339,7 +342,7 @@ const PatientDetail = () => {
       {activeTab === 'cls' && (
         <div className="bg-white p-6 rounded-b-xl rounded-tr-xl shadow-sm border border-gray-100 border-t-0">
           <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-            🧪 Lịch sử Cận Lâm Sàng
+            Lịch sử cận lâm sàng
           </h3>
           <div className="overflow-x-auto">
             <table className="min-w-full table-auto">

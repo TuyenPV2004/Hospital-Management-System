@@ -48,7 +48,7 @@ const AppointmentManager = ({ role }) => {
 
     return (
         <div className="p-6 bg-white rounded shadow">
-            <h2 className="text-xl font-bold mb-4">Quản lý Lịch hẹn</h2>
+            <h2 className="text-xl font-bold mb-4">Quản lý lịch hẹn</h2>
             
             {/* Filter Bar */}
             <div className="flex gap-4 mb-4">
@@ -85,7 +85,7 @@ const AppointmentManager = ({ role }) => {
                             <th className="p-3 text-left">ID</th>
                             <th className="p-3 text-left">Bệnh nhân</th>
                             <th className="p-3 text-left">Bác sĩ</th>
-                            <th className="p-3 text-left">Ngày giờ</th>
+                            <th className="p-3 text-left">Thời gian</th>
                             <th className="p-3 text-left">Trạng thái</th>
                             <th className="p-3 text-center">Thao tác</th>
                         </tr>
